@@ -13,8 +13,8 @@ import sys
 import gui
 import serial
 
-TEENSY_INPUT_COM = "COM8"
-TEENSY_OUTPUT_COM = "COM9"
+TEENSY_INPUT_COM = "COM11"
+TEENSY_OUTPUT_COM = "COM12"
 ISREADING = True;
 
 
@@ -38,7 +38,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
         ## fictrac
         self.launch_fictrac_toggle.stateChanged.connect(self.toggle_fictrac)
-        self.save_fictrac_toggle.stateChanged.connect(self.save_fictrac)
+        # self.save_fictrac_toggle.stateChanged.connect(self.save_fictrac)
         self.ft_process = FictracProcess()
 
         ## set data output directory
@@ -46,7 +46,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.set_path_push.clicked.connect(self.set_path)
         self.filepath = ""
         self.expt_name = ""
-        self.exp_path = os.environ['HOME']
+        self.exp_path = os.environ['USERPROFILE']
 
         try:
             self.teensy_input_serial = serial.Serial(TEENSY_INPUT_COM)
@@ -58,10 +58,10 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         except serial.SerialException:
             raise Exception("teensy output serial port %s couldn't be opened" % TEENSY_OUTPUT_COM)
         # start serial port client
-        self.teensy_read_queue = Queue()
-        self.teensy_read_process = Process(target=self.continous_read(self.teensy_output_serial,
-                                                                      self.teensy_read_queue))
-        self.teensy_read_process.start()
+        # self.teensy_read_queue = Queue()
+        # self.teensy_read_process = Process(target=self.continous_read(self.teensy_output_serial,
+        #                                                               self.teensy_read_queue))
+        # self.teensy_read_process.start()
 
     def start_scan(self):
 
@@ -84,7 +84,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         for msg in iter(self.teensy_read_queue.get,"END QUEUE"):
             print(msg)
 
-    def trigger_opt(self):
+    def trigger_opto(self):
         self.teensy_input_serial.write(b'3') # see teensy_control.ino
 
     def toggle_fictrac(self):
