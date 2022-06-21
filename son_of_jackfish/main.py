@@ -25,9 +25,9 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
 
         ## Teensy connections
-        self.start_scan_push.clicked(self.start_scan)
-        self.stop_scan_push.clicked(self.stop_scan)
-        self.trigger_opto_push.clicked(self.trigger_opto)
+        self.start_scan_push.clicked.connect(self.start_scan)
+        self.stop_scan_push.clicked.connect(self.stop_scan)
+        self.trigger_opto_push.clicked.connect(self.trigger_opto)
 
 
         #TODO: edit to deal with our cameras and FicTrac params
