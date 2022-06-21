@@ -1,7 +1,7 @@
 import os
 import subprocess
 from fictrac_utils import FictracProcess
-from multiprocessing import Process, Queue
+from multiprocessing import Queue
 import numpy as np
 import time
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -58,10 +58,10 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         except serial.SerialException:
             raise Exception("teensy output serial port %s couldn't be opened" % TEENSY_OUTPUT_COM)
         # start serial port client
-        # self.teensy_read_queue = Queue()
-        # self.teensy_read_process = Process(target=self.continous_read(self.teensy_output_serial,
-        #                                                               self.teensy_read_queue))
-        # self.teensy_read_process.start()
+        self.teensy_read_queue = Queue()
+        self.teensy_read_process = Process(target=self.continous_read, args = (self.teensy_output_serial,
+                                                                      self.teensy_read_queue))
+        self.teensy_read_process.start()
 
     def start_scan(self):
 
