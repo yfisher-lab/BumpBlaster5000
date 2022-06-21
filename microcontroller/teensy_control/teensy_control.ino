@@ -9,6 +9,8 @@ float ft_x;
 float ft_y;
 const byte ft_frame_pin = 2;
 
+int ft_current_frame = 0;
+
 #include <Wire.h>
 #include <Adafruit_MCP4725.h>
 // include <Adafruit_IO.h>
@@ -30,9 +32,10 @@ const byte ft_num_cols = 26;
 const byte ft_dropped_frame_pin = 9; // still need to check
 
 //Bruker Triggers
-const byte bk_start_scan_pin = 33;
-bool bk_start_scan_state = false;
-int bk_start_scan_timestamp; 
+const byte bk_scan_trig_pin = 33;
+bool bk_scan_trig_state = false;
+bool bk_isscanning = false;
+int bk_scan_trig_timestamp;
 
 const byte bk_opto_trig_pin = 34;
 bool bk_opto_trig_state = false;
@@ -68,23 +71,12 @@ void setup() {
   heading_dac.begin(0x62,&Wire);
   x_dac.begin(0x62,&Wire1);
   y_dac.begin(0x62,&Wire2);
-  
-  // setup PWM pins
-//  analogWriteResolution(pwm_resolution); 
-//  pinMode(ft_heading_pin, OUTPUT);
-//  analogWriteFrequency(ft_heading_pin,optimal_pwm_freq); // optimal freq, should ft_x_pin and ft_y_pin freqs too but setting them too JIC
-//  pinMode(ft_x_pin, OUTPUT);
-//  analogWriteFrequency(ft_x_pin,optimal_pwm_freq); // should be redundant
-//  pinMode(ft_y_pin, OUTPUT);
-//  analogWriteFrequency(ft_y_pin,optimal_pwm_freq); // should be redundant
-  
+
   // Bruker setup
-  pinMode(bk_start_scan_pin, OUTPUT);
-  digitalWriteFast(bk_start_scan_pin, LOW);
-  bk_start_scan_timestamp = millis();
-  pinMode(bk_kill_scan_pin, OUTPUT);
-  digitalWriteFast(bk_kill_scan_pin, LOW);
-  bk_kill_scan_timestamp = millis();
+  pinMode(bk_scan_trig_pin, OUTPUT);
+  digitalWriteFast(bk_scan_trig_pin, LOW);
+  bk_scan_trig_timestamp = millis();
+
   pinMode(bk_opto_trig_pin, OUTPUT);
   digitalWriteFast(bk_opto_trig_pin, LOW);
   bk_opto_trig_timestamp = millis();
@@ -174,6 +166,9 @@ void ft_state_machine() {
       digitalWriteFast(ft_frame_pin,HIGH);
       break;
 
+    case 1: // frame counter
+      ft_current_frame = atoi(_ft_chars);
+
     case 17: // heading 
       // flip ft pin low 
       digitalWriteFast(ft_frame_pin,LOW);
@@ -252,21 +247,43 @@ void bk_state_machine(int cmd) {
     case 0: // do nothing
       break;
     case 1: // flip start scan trigger high
-      digitalWriteFast(bk_start_scan_pin, HIGH);
-      bk_start_scan_state = true;
-      bk_start_scan_timestamp = millis();
+      if ~bk_isscanning {
+        digitalWriteFast(bk_scan_trig_pin, HIGH);
+        bk_scan_trig_state = true;
+        bk_scan_trig_timestamp = millis();
+        bk_isscanning = true;
+      }
       break;
     case 2: // flip kill scan trigger high
 //      digitalWriteFast(bk_kill_scan_pin, HIGH);
-//      bk_kill_scan_state = true;
-//      bk_kill_scan_timestamp = millis();
-      BKSERIAL.println("abort");
+      if bk_isscanning {
+        digitalWriteFast(bk_scan_trig_pin, HIGH);
+        bk_scan_trig_state = true;
+        bk_scan_trig_timestamp = millis();
+
+        SerialUSB2.write("abort, "); // abort trigger rising edge Fictrac frame
+        SerialUSB2.write(ft_current_frame);
+        SerialUSB2.write('\n');
+        SerialUSB2.writeln("END QUEUE")
+
+        // send kill scan signal to PrarieView API
+        BKSERIAL.println("abort");
+
+        bk_isscanning = false;
+      }
       break;
     case 3: // flip opto scan trigger high
       digitalWriteFast(bk_opto_trig_pin, HIGH);
       bk_opto_trig_state = true;
       bk_opto_trig_timestamp = millis();
+
+
+      SerialUSB2.write("opto, "); // opto trigger rising edge Fictrac frame
+      SerialUSB2.write(ft_current_frame);
+      SerialUSB2.write('\n');
       break;
+
+
   }
 
 }
@@ -275,14 +292,18 @@ void bk_state_machine(int cmd) {
 void bk_check_pins() {
 // flip triggers down
   int curr_timestamp = millis();
-  if (bk_start_scan_state & ((curr_timestamp - bk_start_scan_timestamp) > bk_trig_timeout)) {
-    digitalWriteFast(bk_start_scan_pin,LOW);
-    bk_start_scan_state=false;
+  if (bk_scan_trig_state & ((curr_timestamp - bk_scan_trig_timestamp) > bk_trig_timeout)) {
+    if bk_isscanning { // if this is a start scan trigger
+      SerialUSB2.write("start, ") // start trigger falling edge Fictrac frame
+      SerialUSB2.write(ft_current_frame)
+      SerialUSB2.write('\n');
+
+    }
+    digitalWriteFast(bk_scan_trig_pin,LOW);
+    bk_scan_trig_state=false;
+
   }
-  if (bk_kill_scan_state & ((curr_timestamp - bk_kill_scan_timestamp) > bk_trig_timeout)) {
-    digitalWriteFast(bk_kill_scan_pin,LOW);
-    bk_kill_scan_state=false;
-  }
+
   if (bk_opto_trig_state & ((curr_timestamp - bk_opto_trig_timestamp) > bk_trig_timeout)) {
     digitalWriteFast(bk_opto_trig_pin,LOW);
     bk_opto_trig_state=false;
