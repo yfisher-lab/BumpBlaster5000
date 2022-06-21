@@ -1,0 +1,10 @@
+name: BumpBlaster
+channels:
+  - defaults
+dependencies:
+  - numpy
+  - scipy
+  - pyqt
+  - pyserial
+  - pyqtgraph
+prefix: C:\Users\markp\anaconda3\envs\BumpBlaster
