@@ -168,46 +168,47 @@ void ft_state_machine() {
 
     case 1: // frame counter
       ft_current_frame = atoi(_ft_chars);
+      break;
 
     case 17: // heading 
       // flip ft pin low 
       digitalWriteFast(ft_frame_pin,LOW);
 
-      SerialUSB2.print("z \t");
-      SerialUSB2.print(_ft_chars);
-      SerialUSB2.print("\n");
-      
+//      SerialUSB2.print("z \t");
+//      SerialUSB2.print(_ft_chars);
+//      SerialUSB2.print("\n");
+//      
       // update heading pin
-      heading_dac.setVoltage(int(max_dac_val * atof(_ft_chars) / (2 * PI)));
+      heading_dac.setVoltage(int(max_dac_val * atof(_ft_chars) / (2 * PI)),false);
 //      analogWrite(ft_heading_pin, int(max_pwm_val * atof(_ft_chars) / (2 * PI)));
       break;
     
     case 12: // x
-      x_dac.setVoltage(int(max_dac_val * atof(_ft_chars + PI) / (2 * PI)));
+      x_dac.setVoltage(int(max_dac_val * (atof(_ft_chars) + PI) / (2 * PI)),false);
 //      analogWrite(ft_x_pin, int(max_pwm_val * (atof(_ft_chars)+PI) / (2 * PI))); 
       break;
 
     case 13: // y
-      y_dac.setVoltage(int(max_dac_val * atof(_ft_chars + PI) / (2 * PI)));
+      y_dac.setVoltage(int(max_dac_val * (atof(_ft_chars) + PI) / (2 * PI)),false);
 //      analogWrite(ft_y_pin, int(max_pwm_val * (atof(_ft_chars)+PI) / (2 * PI))); 
       break;
 
-    case 20: // x
-      // debugging print x cumm
-      SerialUSB2.print("x \t");
-      SerialUSB2.print(_ft_chars);
-      SerialUSB2.print("\t");
-
-      break;
-
-    case 21: // y
-      // debugging print y cumm
-      SerialUSB2.print("y \t");
-      SerialUSB2.print(_ft_chars);
-      SerialUSB2.print("\t");
+//    case 20: // x
+//      // debugging print x cumm
+//      SerialUSB2.print("x \t");
+//      SerialUSB2.print(_ft_chars);
+//      SerialUSB2.print("\t");
+//
+//      break;
+//
+//    case 21: // y
+//      // debugging print y cumm
+//      SerialUSB2.print("y \t");
+//      SerialUSB2.print(_ft_chars);
+//      SerialUSB2.print("\t");
+//      
       
-      
-      break;
+//      break;
   }
   
 }
@@ -247,7 +248,7 @@ void bk_state_machine(int cmd) {
     case 0: // do nothing
       break;
     case 1: // flip start scan trigger high
-      if ~bk_isscanning {
+      if (!bk_isscanning) {
         digitalWriteFast(bk_scan_trig_pin, HIGH);
         bk_scan_trig_state = true;
         bk_scan_trig_timestamp = millis();
@@ -256,15 +257,15 @@ void bk_state_machine(int cmd) {
       break;
     case 2: // flip kill scan trigger high
 //      digitalWriteFast(bk_kill_scan_pin, HIGH);
-      if bk_isscanning {
+      if (bk_isscanning) {
         digitalWriteFast(bk_scan_trig_pin, HIGH);
         bk_scan_trig_state = true;
         bk_scan_trig_timestamp = millis();
 
-        SerialUSB2.write("abort, "); // abort trigger rising edge Fictrac frame
-        SerialUSB2.write(ft_current_frame);
-        SerialUSB2.write('\n');
-        SerialUSB2.writeln("END QUEUE")
+        SerialUSB2.print("abort, "); // abort trigger rising edge Fictrac frame
+        SerialUSB2.print(ft_current_frame);
+        SerialUSB2.print('\n');
+        SerialUSB2.println("END QUEUE");
 
         // send kill scan signal to PrarieView API
         BKSERIAL.println("abort");
@@ -278,9 +279,9 @@ void bk_state_machine(int cmd) {
       bk_opto_trig_timestamp = millis();
 
 
-      SerialUSB2.write("opto, "); // opto trigger rising edge Fictrac frame
-      SerialUSB2.write(ft_current_frame);
-      SerialUSB2.write('\n');
+      SerialUSB2.print("opto, "); // opto trigger rising edge Fictrac frame
+      SerialUSB2.print(ft_current_frame);
+      SerialUSB2.print('\n');
       break;
 
 
@@ -293,10 +294,10 @@ void bk_check_pins() {
 // flip triggers down
   int curr_timestamp = millis();
   if (bk_scan_trig_state & ((curr_timestamp - bk_scan_trig_timestamp) > bk_trig_timeout)) {
-    if bk_isscanning { // if this is a start scan trigger
-      SerialUSB2.write("start, ") // start trigger falling edge Fictrac frame
-      SerialUSB2.write(ft_current_frame)
-      SerialUSB2.write('\n');
+    if (bk_isscanning) { // if this is a start scan trigger
+      SerialUSB2.print("start, "); // start trigger falling edge Fictrac frame
+      SerialUSB2.print(ft_current_frame);
+      SerialUSB2.print('\n');
 
     }
     digitalWriteFast(bk_scan_trig_pin,LOW);
