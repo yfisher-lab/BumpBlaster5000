@@ -207,7 +207,7 @@ class Ui_MainWindow(object):
         self.cam_view_toggle.setChecked(True)
         self.cam_view_toggle.setObjectName("cam_view_toggle")
         self.stop_scan_push = QtWidgets.QPushButton(self.centralwidget)
-        self.stop_scan_push.setEnabled(False)
+        self.stop_scan_push.setEnabled(True)
         self.stop_scan_push.setGeometry(QtCore.QRect(170, 40, 101, 31))
         font = QtGui.QFont()
         font.setFamily("Arial")

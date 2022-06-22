@@ -242,7 +242,7 @@ void bk_state() {
 
 void bk_state_machine(int cmd) {
 
-  bk_check_pins();
+  
   
   switch(cmd){
     case 0: // do nothing
@@ -286,6 +286,8 @@ void bk_state_machine(int cmd) {
 
 
   }
+  bk_check_pins();
+  
 
 }
 
@@ -298,8 +300,8 @@ void bk_check_pins() {
       SerialUSB2.print("start, "); // start trigger falling edge Fictrac frame
       SerialUSB2.print(ft_current_frame);
       SerialUSB2.print('\n');
-
     }
+    
     digitalWriteFast(bk_scan_trig_pin,LOW);
     bk_scan_trig_state=false;
 

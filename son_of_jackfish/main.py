@@ -1,7 +1,7 @@
 import os
 import subprocess
 from fictrac_utils import FictracProcess
-from multiprocessing import Queue
+from multiprocessing import Queue, Process
 import numpy as np
 import time
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -53,22 +53,18 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         except serial.SerialException:
             raise Exception("teensy input serial port %s couldn't be open" % TEENSY_INPUT_COM)
 
-        try:
-            self.teensy_output_serial = serial.Serial(TEENSY_OUTPUT_COM)
-        except serial.SerialException:
-            raise Exception("teensy output serial port %s couldn't be opened" % TEENSY_OUTPUT_COM)
+
         # start serial port client
         self.teensy_read_queue = Queue()
-        self.teensy_read_process = Process(target=self.continous_read, args = (self.teensy_output_serial,
-                                                                      self.teensy_read_queue))
+        self.teensy_read_process = Process(target=self.continous_read, args = (self.teensy_read_queue,))
         self.teensy_read_process.start()
 
     def start_scan(self):
 
         self.teensy_input_serial.write(b'1') # see teensy_control.ino
-        self.start_scan_push.setEnabled(False)
-        self.trigger_opto_push.setEnabled(True)
-        self.stop_scan_push.setEnabled(True)
+        # self.start_scan_push.setEnabled(False)
+        # self.trigger_opto_push.setEnabled(True)
+        # self.stop_scan_push.setEnabled(True)
 
 
 
@@ -76,12 +72,12 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
     def stop_scan(self):
         self.teensy_input_serial.write(b'2') # see teensy_control.ino
-        self.start_scan_push.setEnabled(True)
-        self.trigger_opto_push.setEnabled(False)
-        self.stop_scan_push.setEnabled(True)
+        # self.start_scan_push.setEnabled(True)
+        # self.trigger_opto_push.setEnabled(False)
+        # self.stop_scan_push.setEnabled(True)
 
         #TODO: gather SerialUSB2 values and save
-        for msg in iter(self.teensy_read_queue.get,"END QUEUE"):
+        for msg in iter(self.teensy_read_queue.get, b'END QUEUE\r\n'):
             print(msg)
 
     def trigger_opto(self):
@@ -104,6 +100,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
             self.ft_process.close()
         self.stop_scan()
         ISREADING = False
+        self.teensy_read_process.join()
 
 
 
@@ -127,7 +124,12 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
             os.mkdir(self.exp_path)
 
     @staticmethod
-    def continous_read(srl, q):
+    def continous_read(q):
+        try:
+            srl = serial.Serial(TEENSY_OUTPUT_COM)
+        except serial.SerialException:
+            raise Exception("teensy output serial port %s couldn't be opened" % TEENSY_OUTPUT_COM)
+
         while ISREADING:
             while srl.inWaiting()>0:
                 q.put(srl.readline())
