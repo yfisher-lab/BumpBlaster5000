@@ -83,6 +83,8 @@ void setup() {
 
   // camera trig
   pinMode(cam_trig_pin,INPUT);
+
+  BKSERIAL.begin(115200);
   
   
   
