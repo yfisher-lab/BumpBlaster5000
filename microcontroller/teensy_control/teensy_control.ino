@@ -268,7 +268,7 @@ void bk_state_machine(int cmd) {
         SerialUSB2.println("END QUEUE");
 
         // send kill scan signal to PrarieView API
-        BKSERIAL.println("abort");
+        BKSERIAL.println("-Abort");
 
         bk_isscanning = false;
       }

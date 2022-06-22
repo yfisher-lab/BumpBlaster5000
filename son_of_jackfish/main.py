@@ -59,12 +59,19 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.teensy_read_process = Process(target=self.continous_read, args = (self.teensy_read_queue,))
         self.teensy_read_process.start()
 
+        self.cam_timer = QtCore.QTimer()
+        self.cam_timer.timeout.connect(self.cam_updater)
+        self.fictrac_timer = QtCorre.QTimer()
+        self.fictrac_timer.timeout.connect(self.fictrac_plotter)
+        self.zproj_timer.timeout.connect(self.zproj_plotter)
+
+
     def start_scan(self):
 
         self.teensy_input_serial.write(b'1') # see teensy_control.ino
-        # self.start_scan_push.setEnabled(False)
-        # self.trigger_opto_push.setEnabled(True)
-        # self.stop_scan_push.setEnabled(True)
+        self.start_scan_push.setEnabled(False)
+        self.trigger_opto_push.setEnabled(True)
+        self.stop_scan_push.setEnabled(True)
 
 
 
@@ -72,13 +79,13 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
     def stop_scan(self):
         self.teensy_input_serial.write(b'2') # see teensy_control.ino
-        # self.start_scan_push.setEnabled(True)
-        # self.trigger_opto_push.setEnabled(False)
-        # self.stop_scan_push.setEnabled(True)
+        self.start_scan_push.setEnabled(True)
+        self.trigger_opto_push.setEnabled(False)
+        self.stop_scan_push.setEnabled(True)
 
         #TODO: gather SerialUSB2 values and save
         for msg in iter(self.teensy_read_queue.get, b'END QUEUE\r\n'):
-            print(msg)
+            print(msg.decode('UTF-8').rstrip())
 
     def trigger_opto(self):
         self.teensy_input_serial.write(b'3') # see teensy_control.ino
@@ -133,6 +140,16 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         while ISREADING:
             while srl.inWaiting()>0:
                 q.put(srl.readline())
+
+    def cam_updater(self):
+        pass
+
+    def fictrac_plotter(self):
+        pass
+
+    def zproj_plotter(self):
+        pass
+
 
 
 
