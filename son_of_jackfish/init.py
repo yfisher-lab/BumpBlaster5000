@@ -1,1 +1,1 @@
-from . import main, gui, fictrac_utils
+from . import main, gui, fictrac_utils, prairie_link_client
