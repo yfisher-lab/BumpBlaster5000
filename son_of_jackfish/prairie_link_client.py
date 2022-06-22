@@ -12,9 +12,9 @@ import time
 
 
 
-def continuous_read_serial(q, TEENSY_COM='COM11'):
+def continuous_read_serial(q, TEENSY_COM='COM12'):
     global PRAIRIE_VIEW_ACTIVE
-    with serial.Serial(TEENSY_COM) as srl:
+    with serial.Serial(TEENSY_COM, baudrate=115200) as srl:
         while PRAIRIE_VIEW_ACTIVE:
             q.put(srl.readline().decode('UTF-8').rstrip())
 
@@ -53,6 +53,25 @@ def prairie_view_monitor():
             PRAIRIE_VIEW_ACTIVE = False
 
 
+def get_image():
+    pxls_per_line = pl.PixelsPerLine()
+    lines_per_frame = pl.LinesPerFrame()
+
+    img = pl.GetImage_2(channel_int)
+
+#     {-MarkPoints|-mp} [<Category Name> <Experiment Name>]
+# Runs a saved Mark Point Series (or experiment) provided the category and name of the saved series/experiment; if
+# no optional parameters are provided then the current series/experiment will be run.
+# {-MarkPoints|-mp} [<X Position % of image 0-1, where 0 is the left side> <Y Position % of image 0-1,
+# where 0 is the top> <Laser Pulse Duration ms> <Laser Name as it appears in the UI> <Laser Power same range as
+# UI controls, supports 2P laser calibration> [{Is Spiral True|False} <Spiral Size % of image 0-1 in the x dimension,
+# spiral will be forced to be a circle> <Spiral Revolutions>] [{Trigger None|PFI0|PFI1|PFI8|TrigIn}
+# [{Trigger Count only used when Trigger is passed as PFI8>]] <Delay ms, omit for last repetition of parameter>]...
+# repeat all parameters again to mark another location
+# Marks the specified points on the fly with the laser pulse parameters provided; no need to set up a point location
+# or experiment ahead of time.  Is spiral is assumed to be False if omitted and spiral size and revolutions should also
+# be omitted, and if no trigger is specified it is assumed to be None.
+# See Mark Points documentation for more information on specific parameters.
 
 
 if __name__ == "__main__":
