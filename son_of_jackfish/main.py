@@ -61,8 +61,9 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
         self.cam_timer = QtCore.QTimer()
         self.cam_timer.timeout.connect(self.cam_updater)
-        self.fictrac_timer = QtCorre.QTimer()
+        self.fictrac_timer = QtCore.QTimer()
         self.fictrac_timer.timeout.connect(self.fictrac_plotter)
+        self.zproj_timer = QtCore.QTimer()
         self.zproj_timer.timeout.connect(self.zproj_plotter)
 
 
