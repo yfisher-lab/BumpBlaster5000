@@ -23,15 +23,12 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         super(FLUI, self).__init__(parent)
         self.setupUi(self)
 
-
         ## Teensy connections
         self.start_scan_push.clicked.connect(self.start_scan)
         self.stop_scan_push.clicked.connect(self.stop_scan)
         self.trigger_opto_push.clicked.connect(self.trigger_opto)
 
-
         #TODO: edit to deal with our cameras and FicTrac params
-
 
         ## camera preview
         self.cam_view_toggle.stateChanged.connect(self.toggle_cam_view)
@@ -74,17 +71,14 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.trigger_opto_push.setEnabled(True)
         self.stop_scan_push.setEnabled(True)
 
-
-
-
-
     def stop_scan(self):
         self.teensy_input_serial.write(b'2') # see teensy_control.ino
         self.start_scan_push.setEnabled(True)
         self.trigger_opto_push.setEnabled(False)
         self.stop_scan_push.setEnabled(True)
 
-        #TODO: gather SerialUSB2 values and save
+        #TODO: gather SerialUSB2 values and save fictrac information
+        # currently just printing to debug
         for msg in iter(self.teensy_read_queue.get, b'END QUEUE\r\n'):
             print(msg.decode('UTF-8').rstrip())
 
@@ -97,7 +91,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
             self.ft_process.open()
         else:
             self.ft_process.close()
-
+            #TODO: find Fictrac
 
     def toggle_cam_view(self):
         self.cam_view = self.cam_view_toggle.isChecked()
@@ -108,9 +102,11 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
             self.ft_process.close()
         self.stop_scan()
         ISREADING = False
+
         self.teensy_read_process.join()
+        self.teensy_input_serial.close()
 
-
+        #TODO: find output and log files from fictrac and get rid of them
 
         # close cameras
 
@@ -141,6 +137,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         while ISREADING:
             while srl.inWaiting()>0:
                 q.put(srl.readline())
+        srl.close()
 
     def cam_updater(self):
         pass

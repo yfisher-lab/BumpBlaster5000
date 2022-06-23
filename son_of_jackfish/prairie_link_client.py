@@ -2,7 +2,6 @@ import sys
 
 import win32com.client
 import serial
-# from multiprocessing import Process, Queue
 from queue import Queue
 from threading import Thread
 import psutil
@@ -53,11 +52,14 @@ def prairie_view_monitor():
             PRAIRIE_VIEW_ACTIVE = False
 
 
-def get_image():
+def get_image(pl):
     pxls_per_line = pl.PixelsPerLine()
     lines_per_frame = pl.LinesPerFrame()
 
-    img = pl.GetImage_2(channel_int)
+    img = pl.GetImage_2(channel_int, pxls_per_line, lines_per_frame)
+
+#TODO: make z-stack plugin
+#TODO: make custom stim plugin
 
 #     {-MarkPoints|-mp} [<Category Name> <Experiment Name>]
 # Runs a saved Mark Point Series (or experiment) provided the category and name of the saved series/experiment; if
