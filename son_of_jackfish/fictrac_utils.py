@@ -7,12 +7,7 @@ import threading
 FICTRAC_PATH = r'C:\Users\fisherlab\Documents\FicTrac211\fictrac.exe'
 CONFIG_PATH = r'C:\Users\fisherlab\Documents\FicTrac211\config.txt'
 
-def threaded(fn):
-    def wrapper(*args, **kwargs):
-        thread = threading.Thread(target=fn, args=args, kwargs=kwargs)
-        thread.start()
-        return thread
-    return wrapper
+
 
 # try using events, locks, or barriers instead of globals
 
@@ -36,11 +31,23 @@ class FicTracSubProcess:
         self.open_evnt.clear()
 
 
-class FicTracSocketManager:
+class FicTracSocketManager():
+    """
+
+
+    """
 
     def __init__(self, fictrac_path = FICTRAC_PATH, config_file=CONFIG_PATH, host='127.0.0.1', port=65413,
                  columns_to_read = {'heading':17, 'integrated x': 20, 'integrated y': 21},
                  ):
+        """
+
+        :param fictrac_path:
+        :param config_file:
+        :param host:
+        :param port:
+        :param columns_to_read:
+        """
 
         self.ft_subprocess = FicTracSubProcess(fictrac_path=fictrac_path,
                                                config_file=config_file)
@@ -58,36 +65,76 @@ class FicTracSocketManager:
         self._ft_buffer_lock = threading.Lock()
         self.ft_buffer = ""
         self.ft_output_path = None
+        self._ft_output_handle = None
+        self.ft_queue = threading.Queue()
 
 
         # start read thread
 
     def start_reading(self, fictrac_output_file = os.path.join(os.getcwd(),"fictrac_output.log")):
+        """
+
+        :param fictrac_output_file:
+        :return:
+        """
         # check if output file exists
+        if os.path.exists(fictrac_output_file):
+            fictrac_output_file = fictrac_output_file.splitext()[0]+"_1.log"
+
         self.ft_output_path = fictrac_output_file
+        self._ft_output_handle = open(self.ft_output_path,'wb')
         # open output file
         self.reading.is_set()
-        self._reading_thread_handle = self.read_thread()
+        self._reading_thread_handle = self._read_thread()
 
     def stop_reading(self):
+        """
+
+        :return:
+        """
+
         self.reading.clear()
         self._reading_thread_handle.join()
+        self._reading_thread_handle = None
         self.close_socket()
+        self._ft_output_handle.close()
+        self._ft_output_handle = None
         # close output file
 
     def open_socket(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._sock.bind((self.host, self.port))
         self._sock.setblocking(False)
-        self.sock_open.set()
+        self._socket_open.set()
 
     def close_socket(self):
         self._sock.close()
-        self.sock_open.clear()
+        self._socket_open.clear()
+
+    def close(self):
+        if self._socket_open.is_set():
+            self.close_socket()
+
+        if self.reading.is_set():
+            self.stop_reading()
+
+        if isinstance(self._reading_thread_handle, threading.Thread):
+            self._reading_thread_handle.join()
+            self._reading_thread_handle = None
+
+    def read_top_of_queue(self):
+        """
+
+        :return:
+        """
+        try:
+            return self.ft_queue.get()
+        except Queue.Empty:
+            return None
 
 
     @threaded # defined at top, need to work on this one
-    def read_thread(self):
+    def _read_thread(self):
 
         # while fictrack is running
         while self.reading.is_set():
@@ -97,12 +144,10 @@ class FicTracSocketManager:
 
             # Only try to receive data if there is data waiting
             if ready[0]:
-                self._process_line()
+                single_line = self._process_line()
+                self.ft_queue.put(single_line)
             else:
                 pass
-
-
-        self.socket_open.clear()
 
     def _process_line(self, recvd_data):
         # Receive one data frame
@@ -128,6 +173,7 @@ class FicTracSocketManager:
             return
 
         # print to output file
+        self._ft_output_handle.writeline(self.ft_buffer)
 
         # extract fictrac variables
         # (see https://github.com/rjdmoore/fictrac/blob/master/doc/data_header.txt for descriptions)

@@ -1,7 +1,8 @@
 import os
 import subprocess
-from fictrac_utils import FictracProcess
-from multiprocessing import Queue, Process
+
+# from multiprocessing import Queue, Process
+import threading
 import numpy as np
 import time
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -13,9 +14,11 @@ import sys
 import gui
 import serial
 
+
+import fictrac_utils as ft_utils
+
 TEENSY_INPUT_COM = "COM11"
 TEENSY_OUTPUT_COM = "COM12"
-ISREADING = True;
 
 
 class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
@@ -36,7 +39,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         ## fictrac
         self.launch_fictrac_toggle.stateChanged.connect(self.toggle_fictrac)
         # self.save_fictrac_toggle.stateChanged.connect(self.save_fictrac)
-        self.ft_process = FictracProcess()
+        self.ft_manager = ft_utils.FicTracSocketManager() # add arguments
 
         ## set data output directory
         #TODO: talk to Bruker API to make similar paths
@@ -52,9 +55,10 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
 
         # start serial port client
-        self.teensy_read_queue = Queue()
-        self.teensy_read_process = Process(target=self.continous_read, args = (self.teensy_read_queue,))
-        self.teensy_read_process.start()
+        self._isreading = threading.Event()
+        self.teensy_read_queue = threading.Queue()
+        self.teensy_read_handle = self.continuouse_read()
+        # self.teensy_read_process.start()
 
         self.cam_timer = QtCore.QTimer()
         self.cam_timer.timeout.connect(self.cam_updater)
@@ -66,13 +70,24 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
     def start_scan(self):
 
+        if self.ft_manager.ft_subprocess.open_evnt.is_set():
+            # if save fictrac
+            # set filenames
+            self.ft_manager.start_reading()
+
         self.teensy_input_serial.write(b'1') # see teensy_control.ino
         self.start_scan_push.setEnabled(False)
         self.trigger_opto_push.setEnabled(True)
         self.stop_scan_push.setEnabled(True)
 
+
     def stop_scan(self):
         self.teensy_input_serial.write(b'2') # see teensy_control.ino
+        if self.ft_manager.ft_subprocess.open_evnt.is_set():
+            # if save fictrac
+            # set filenames
+            self.ft_manager.stop_reading()
+
         self.start_scan_push.setEnabled(True)
         self.trigger_opto_push.setEnabled(False)
         self.stop_scan_push.setEnabled(True)
@@ -98,20 +113,19 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
     def shutdown(self):
 
-        if self.ft_process.p is not None:
-            self.ft_process.close()
-        self.stop_scan()
-        ISREADING = False
+        if self.ft_manager.ft_subprocess.open_evnt.is_set():
+            self.ft_manager.close()
 
-        self.teensy_read_process.join()
+        self.stop_scan()
+        self._isreading.clear()
+
+
+        self.teensy_read_handle.join()
         self.teensy_input_serial.close()
 
         #TODO: find output and log files from fictrac and get rid of them
 
         # close cameras
-
-
-
 
     def set_path(self):
 
@@ -127,16 +141,18 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
             self.exp_path = os.path.join(self.filepath, self.expt_name)
             os.mkdir(self.exp_path)
 
-    @staticmethod
-    def continous_read(q):
+    @threaded
+    def continous_read(self):
         try:
             srl = serial.Serial(TEENSY_OUTPUT_COM)
         except serial.SerialException:
             raise Exception("teensy output serial port %s couldn't be opened" % TEENSY_OUTPUT_COM)
 
-        while ISREADING:
+        self._isreading.set()
+
+        while self._isreading.is_set():
             while srl.inWaiting()>0:
-                q.put(srl.readline())
+                self.teensy_read_queue.put(srl.readline())
         srl.close()
 
     def cam_updater(self):
