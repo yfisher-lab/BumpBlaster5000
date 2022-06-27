@@ -2,21 +2,19 @@ import sys
 import win32com.client
 import serial
 from queue import Queue
-from threading import Thread
+import threading
 import psutil
 import time
 
 
 def continuous_read_serial(q, TEENSY_COM='COM12'):
-    global PRAIRIE_VIEW_ACTIVE
     with serial.Serial(TEENSY_COM, baudrate=115200) as srl:
         while PRAIRIE_VIEW_ACTIVE:
             q.put(srl.readline().decode('UTF-8').rstrip())
 
 
 def get_queue(q):
-    global PRAIRIE_VIEW_ACTIVE
-    global pl
+
     success = pl.Connect()
     if not success:
         sys.exit("failed to connect to Prairie Link")
@@ -39,13 +37,12 @@ def is_prairie_view_open():
 
 
 def prairie_view_monitor():
-    global PRAIRIE_VIEW_ACTIVE
     while PRAIRIE_VIEW_ACTIVE:
         if is_prairie_view_open():
-            PRAIRIE_VIEW_ACTIVE = True
+            PRAIRIE_VIEW_ACTIVE.set()
             time.sleep(1)
         else:
-            PRAIRIE_VIEW_ACTIVE = False
+            PRAIRIE_VIEW_ACTIVE.clear()
 
 
 def get_image(pl):
@@ -76,22 +73,24 @@ if __name__ == "__main__":
 
     if is_prairie_view_open():
 
-        global PRAIRIE_VIEW_ACTIVE
-        global pl
         pl = win32com.client.Dispatch("PrairieLink.Application")
-        PRAIRIE_VIEW_ACTIVE = is_prairie_view_open()
+
+        with threading.Lock():
+            PRAIRIE_VIEW_ACTIVE = threading.Event()
+            PRAIRIE_VIEW_ACTIVE.set()
+
         pl_queue = Queue()
-        # # keep everything going until prarie view closes
-        prairie_view_monitor_process = Thread(target = prairie_view_monitor)
+        # # keep everything going until prairie view closes
+        prairie_view_monitor_process = threading.Thread(target=prairie_view_monitor)
         prairie_view_monitor_process.start()
         time.sleep(.1)
 
         # continuous listen
-        read_serial_process = Thread(target = continuous_read_serial, args = (pl_queue,))
+        read_serial_process = threading.Thread(target=continuous_read_serial, args=(pl_queue,))
         read_serial_process.start()
 
         # continous read queue
-        get_queue_process = Thread(target = get_queue, args = (pl_queue,))
+        get_queue_process = threading.Thread(target=get_queue, args=(pl_queue,))
         get_queue_process.start()
 
         prairie_view_monitor_process.join()
