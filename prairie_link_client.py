@@ -1,14 +1,10 @@
 import sys
-
 import win32com.client
 import serial
 from queue import Queue
 from threading import Thread
 import psutil
 import time
-
-
-
 
 
 def continuous_read_serial(q, TEENSY_COM='COM12'):
@@ -93,7 +89,6 @@ if __name__ == "__main__":
         # continuous listen
         read_serial_process = Thread(target = continuous_read_serial, args = (pl_queue,))
         read_serial_process.start()
-
 
         # continous read queue
         get_queue_process = Thread(target = get_queue, args = (pl_queue,))

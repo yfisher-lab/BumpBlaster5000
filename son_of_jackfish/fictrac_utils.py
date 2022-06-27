@@ -1,12 +1,13 @@
 import os
 import socket
+import select
 import subprocess
 import threading
-
+import queue
+from utils import threaded
 
 FICTRAC_PATH = r'C:\Users\fisherlab\Documents\FicTrac211\fictrac.exe'
 CONFIG_PATH = r'C:\Users\fisherlab\Documents\FicTrac211\config.txt'
-
 
 
 # try using events, locks, or barriers instead of globals
@@ -37,8 +38,8 @@ class FicTracSocketManager():
 
     """
 
-    def __init__(self, fictrac_path = FICTRAC_PATH, config_file=CONFIG_PATH, host='127.0.0.1', port=65413,
-                 columns_to_read = {'heading':17, 'integrated x': 20, 'integrated y': 21},
+    def __init__(self, fictrac_path=FICTRAC_PATH, config_file=CONFIG_PATH, host='127.0.0.1', port=65413,
+                 columns_to_read={'heading': 17, 'integrated x': 20, 'integrated y': 21},
                  ):
         """
 
@@ -66,12 +67,12 @@ class FicTracSocketManager():
         self.ft_buffer = ""
         self.ft_output_path = None
         self._ft_output_handle = None
-        self.ft_queue = threading.Queue()
-
+        self.ft_queue = queue.Queue()
+        self.columns_to_read = columns_to_read
 
         # start read thread
 
-    def start_reading(self, fictrac_output_file = os.path.join(os.getcwd(),"fictrac_output.log")):
+    def start_reading(self, fictrac_output_file=os.path.join(os.getcwd(), "fictrac_output.log")):
         """
 
         :param fictrac_output_file:
@@ -79,15 +80,15 @@ class FicTracSocketManager():
         """
         # check if output file exists
         if os.path.exists(fictrac_output_file):
-            fictrac_output_file = fictrac_output_file.splitext()[0]+"_1.log"
+            fictrac_output_file = fictrac_output_file.splitext()[0] + "_1.log"
 
         self.ft_output_path = fictrac_output_file
-        self._ft_output_handle = open(self.ft_output_path,'wb')
+        self._ft_output_handle = open(self.ft_output_path, 'wb')
         # open output file
         self.reading.is_set()
         self._reading_thread_handle = self._read_thread()
 
-    def stop_reading(self):
+    def stop_reading(self, return_pandas=False):
         """
 
         :return:
@@ -96,22 +97,44 @@ class FicTracSocketManager():
         self.reading.clear()
         self._reading_thread_handle.join()
         self._reading_thread_handle = None
-        self.close_socket()
+
         self._ft_output_handle.close()
         self._ft_output_handle = None
-        # close output file
+
+        if return_pandas:
+            pass
+            # TODO: load output file, set column names, convert to pandas array
+
+    def _output_file_to_pandas(self):
+        """
+
+        :return:
+        """
+        pass
 
     def open_socket(self):
+        """
+
+        :return:
+        """
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._sock.bind((self.host, self.port))
         self._sock.setblocking(False)
         self._socket_open.set()
 
     def close_socket(self):
+        """
+
+        :return:
+        """
         self._sock.close()
         self._socket_open.clear()
 
     def close(self):
+        """
+
+        :return:
+        """
         if self._socket_open.is_set():
             self.close_socket()
 
@@ -122,34 +145,33 @@ class FicTracSocketManager():
             self._reading_thread_handle.join()
             self._reading_thread_handle = None
 
-    def read_top_of_queue(self):
+    def read_ft_queue(self):
         """
 
         :return:
         """
         try:
             return self.ft_queue.get()
-        except Queue.Empty:
+        except queue.Empty:
             return None
 
-
-    @threaded # defined at top, need to work on this one
+    @threaded  # defined at top, need to work on this one
     def _read_thread(self):
-
         # while fictrack is running
         while self.reading.is_set():
 
             # Check to see whether there is data waiting
-            ready = select.select([sock], [], [], fictrac_timeout)
+            ready = select.select([self._sock], [], [], self.ft_timeout)
 
             # Only try to receive data if there is data waiting
             if ready[0]:
                 single_line = self._process_line()
+                # maybe want to replace queue with just a locked value to speed up plotting
                 self.ft_queue.put(single_line)
             else:
                 pass
 
-    def _process_line(self, recvd_data):
+    def _process_line(self):
         # Receive one data frame
         new_data = self._sock.recv(4096)  # new_data = 0 if no bytes sent
         if not new_data:
@@ -177,7 +199,4 @@ class FicTracSocketManager():
 
         # extract fictrac variables
         # (see https://github.com/rjdmoore/fictrac/blob/master/doc/data_header.txt for descriptions)
-        return {k:toks[v] for k,v in self.columns_to_read.items()}
-
-
-
+        return {k: toks[v] for k, v in self.columns_to_read.items()}

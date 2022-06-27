@@ -1,12 +1,10 @@
 import os
-import subprocess
 
-# from multiprocessing import Queue, Process
 import threading
 import numpy as np
-import time
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QApplication, QFileDialog, QInputDialog
+import pyqtgraph as pg
 from PyQt5.QtGui import QPixmap, QImage
 from functools import partial
 import sys
@@ -16,6 +14,7 @@ import serial
 
 
 import fictrac_utils as ft_utils
+from utils import threaded
 
 TEENSY_INPUT_COM = "COM11"
 TEENSY_OUTPUT_COM = "COM12"
@@ -38,7 +37,6 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
         ## fictrac
         self.launch_fictrac_toggle.stateChanged.connect(self.toggle_fictrac)
-        # self.save_fictrac_toggle.stateChanged.connect(self.save_fictrac)
         self.ft_manager = ft_utils.FicTracSocketManager() # add arguments
 
         ## set data output directory
@@ -47,6 +45,9 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.filepath = ""
         self.expt_name = ""
         self.exp_path = os.environ['USERPROFILE']
+
+        #TODO: create socket to prairie_link_client
+
 
         try:
             self.teensy_input_serial = serial.Serial(TEENSY_INPUT_COM)
@@ -60,6 +61,35 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.teensy_read_handle = self.continuouse_read()
         # self.teensy_read_process.start()
 
+        # initialize fly orientation plot
+        self.fly_theta = [np.pi/2.]
+        self.fly_speed = 0.
+        self.fly_orientation_plot = self.fly_orientation_preview.getPlotItem().plot() # look up usage of pyqtgraph
+        self.fly_orientation_plot.addLine(x=0, pen=0.2)
+        self.fly_orientation_plot.addLine(y=0, pen=0.2)
+        for r in range(2, 20, 2):
+            circle = pg.QtGui.QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
+            circle.setPen(pg.mkPen(0.2))
+            self.fly_orientation_plot.addItem(circle)
+
+        # Transform to cartesian and plot
+        x = (self.fly_speed+1) * np.cos(self.fly_theta)
+        y = (self.fly_speed+1) * np.sin(self.fly_theta)
+        self.fly_orientation_plot.plot([0, x], [0, y], pen=(200, 200, 200), symbolBrush=(255, 0, 0), symbolPen='w')
+        self.fly_orientation_plot.setData(self.fly_orientation_data)
+        self.fly_orientation_preview.show()
+
+        # initialize z stack plot
+        self.z_proj_data = [0]
+        self.scan_z_proj_plot = self.scan_z_proj_preview.getPlotItem().plot() # want to plot z-stack or BOT of glomeruli
+        self.scan_z_proj_plot.setData([0])
+        self.scan_z_proj_preview.show()
+
+
+        #TODO: start camera and add checkbox to enable preview of camera, add data to box
+
+        # start timers for plot updating
+        #TODO: look up default timing on QTimer
         self.cam_timer = QtCore.QTimer()
         self.cam_timer.timeout.connect(self.cam_updater)
         self.fictrac_timer = QtCore.QTimer()
@@ -159,7 +189,20 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         pass
 
     def fictrac_plotter(self):
-        pass
+
+        m = self.ft_manager.ft_queue.size
+        x, y, speed = 0, 0, 0
+        for _ in range(m):
+            heading = self.ft_manager.ft_queue.get()[17]
+            speed += self.ft_manager.ft_queue.get()[19]
+            x += np.sin(heading)
+            y += np.sing(heading)
+
+        x /= m
+        y /= m
+        speed /= m
+        self.fly_orientation_plot.setData((speed+1.) * np.array([0, x]),(speed+1.) * np.array([0, y]))
+        self.fly_orientation_preview.show()
 
     def zproj_plotter(self):
         pass
