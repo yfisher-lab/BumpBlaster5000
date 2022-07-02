@@ -52,7 +52,7 @@ class FicTracSocketManager():
 
         self.ft_subprocess = FicTracSubProcess(fictrac_path=fictrac_path,
                                                config_file=config_file)
-        self.ft_subprocess.open()
+        # self.ft_subprocess.open()
 
         self.host = host
         self.port = port
@@ -71,6 +71,10 @@ class FicTracSocketManager():
         self.columns_to_read = columns_to_read
 
         # start read thread
+
+    def open(self):
+        self.ft_subprocess.open()
+
 
     def start_reading(self, fictrac_output_file=os.path.join(os.getcwd(), "fictrac_output.log")):
         """
@@ -145,6 +149,7 @@ class FicTracSocketManager():
             self._reading_thread_handle.join()
             self._reading_thread_handle = None
 
+        self.ft_subprocess.close()
     def read_ft_queue(self):
         """
 

@@ -1,6 +1,7 @@
 import os
 
 import threading
+import queue
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QApplication, QFileDialog, QInputDialog
@@ -16,8 +17,8 @@ import serial
 import fictrac_utils as ft_utils
 from utils import threaded
 
-TEENSY_INPUT_COM = "COM11"
-TEENSY_OUTPUT_COM = "COM12"
+TEENSY_INPUT_COM = "COM7"
+TEENSY_OUTPUT_COM = "COM9"
 
 
 class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
@@ -36,8 +37,8 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.cam_view_toggle.stateChanged.connect(self.toggle_cam_view)
 
         ## fictrac
-        self.launch_fictrac_toggle.stateChanged.connect(self.toggle_fictrac)
         self.ft_manager = ft_utils.FicTracSocketManager() # add arguments
+        self.launch_fictrac_toggle.stateChanged.connect(self.toggle_fictrac)
 
         ## set data output directory
         #TODO: talk to Bruker API to make similar paths
@@ -57,45 +58,45 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
         # start serial port client
         self._isreading = threading.Event()
-        self.teensy_read_queue = threading.Queue()
-        self.teensy_read_handle = self.continuouse_read()
+        self.teensy_read_queue = queue.Queue()
+        self.teensy_read_handle = self.continuous_read()
         # self.teensy_read_process.start()
 
         # initialize fly orientation plot
         self.fly_theta = [np.pi/2.]
         self.fly_speed = 0.
         self.fly_orientation_plot = self.fly_orientation_preview.getPlotItem().plot() # look up usage of pyqtgraph
-        self.fly_orientation_plot.addLine(x=0, pen=0.2)
-        self.fly_orientation_plot.addLine(y=0, pen=0.2)
+        # self.fly_orientation_plot.addLine(x=0, pen=0.2)
+        # self.fly_orientation_plot.addLine(y=0, pen=0.2)
         for r in range(2, 20, 2):
             circle = pg.QtGui.QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
             circle.setPen(pg.mkPen(0.2))
-            self.fly_orientation_plot.addItem(circle)
+            # self.fly_orientation_plot.addItem(circle)
 
         # Transform to cartesian and plot
-        x = (self.fly_speed+1) * np.cos(self.fly_theta)
-        y = (self.fly_speed+1) * np.sin(self.fly_theta)
-        self.fly_orientation_plot.plot([0, x], [0, y], pen=(200, 200, 200), symbolBrush=(255, 0, 0), symbolPen='w')
-        self.fly_orientation_plot.setData(self.fly_orientation_data)
-        self.fly_orientation_preview.show()
-
-        # initialize z stack plot
-        self.z_proj_data = [0]
-        self.scan_z_proj_plot = self.scan_z_proj_preview.getPlotItem().plot() # want to plot z-stack or BOT of glomeruli
-        self.scan_z_proj_plot.setData([0])
-        self.scan_z_proj_preview.show()
+        # x = (self.fly_speed+1) * np.cos(self.fly_theta)
+        # y = (self.fly_speed+1) * np.sin(self.fly_theta)
+        # self.fly_orientation_plot.plot([0, x], [0, y], pen=(200, 200, 200), symbolBrush=(255, 0, 0), symbolPen='w')
+        # self.fly_orientation_plot.setData(self.fly_orientation_data)
+        # self.fly_orientation_preview.show()
+        #
+        # # initialize z stack plot
+        # self.z_proj_data = [0]
+        # self.scan_z_proj_plot = self.scan_z_proj_preview.getPlotItem().plot() # want to plot z-stack or BOT of glomeruli
+        # self.scan_z_proj_plot.setData([0])
+        # self.scan_z_proj_preview.show()
 
 
         #TODO: start camera and add checkbox to enable preview of camera, add data to box
 
         # start timers for plot updating
-        #TODO: look up default timing on QTimer
-        self.cam_timer = QtCore.QTimer()
-        self.cam_timer.timeout.connect(self.cam_updater)
-        self.fictrac_timer = QtCore.QTimer()
-        self.fictrac_timer.timeout.connect(self.fictrac_plotter)
-        self.zproj_timer = QtCore.QTimer()
-        self.zproj_timer.timeout.connect(self.zproj_plotter)
+        # #TODO: look up default timing on QTimer
+        # self.cam_timer = QtCore.QTimer()
+        # self.cam_timer.timeout.connect(self.cam_updater)
+        # self.fictrac_timer = QtCore.QTimer()
+        # self.fictrac_timer.timeout.connect(self.fictrac_plotter)
+        # self.zproj_timer = QtCore.QTimer()
+        # self.zproj_timer.timeout.connect(self.zproj_plotter)
 
 
     def start_scan(self):
@@ -133,9 +134,9 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
     def toggle_fictrac(self):
         #TODO: integrate Minseung's FicTrac_Utils
         if self.launch_fictrac_toggle.isChecked():
-            self.ft_process.open()
+            self.ft_manager.open()
         else:
-            self.ft_process.close()
+            self.ft_manager.close()
             #TODO: find Fictrac
 
     def toggle_cam_view(self):
@@ -172,7 +173,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
             os.mkdir(self.exp_path)
 
     @threaded
-    def continous_read(self):
+    def continuous_read(self):
         try:
             srl = serial.Serial(TEENSY_OUTPUT_COM)
         except serial.SerialException:

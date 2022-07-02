@@ -17,22 +17,12 @@ int ft_current_frame = 0;
 Adafruit_MCP4725 heading_dac;
 Adafruit_MCP4725 x_dac;
 Adafruit_MCP4725 y_dac;
-const int max_dac_val = 4095;
-//// Wire
-//const byte ft_heading_pin = 7;
-////Wire 1
-//const byte ft_x_pin = 8; 
-////Wire 2
-//const byte ft_y_pin = 25;
-//const byte pwm_resolution = 12; // if you change this, need to change optimal fwm freq (https://www.pjrc.com/teensy/td_pulse.html)
-//const int max_pwm_val = 4095; // 0-4095 => <0-5 V>, change if you change pwm_resolution
-//const int optimal_pwm_freq = 36621.09; // 
-//
+const int max_dac_val = 4095; // 0-4095 => <0-3.3 V>, change if you change pwm_resolution
 const byte ft_num_cols = 26; 
 const byte ft_dropped_frame_pin = 9; // still need to check
 
 //Bruker Triggers
-const byte bk_scan_trig_pin = 33;
+const byte bk_scan_trig_pin = 35;
 bool bk_scan_trig_state = false;
 bool bk_isscanning = false;
 int bk_scan_trig_timestamp;
@@ -42,11 +32,11 @@ bool bk_opto_trig_state = false;
 int bk_opto_trig_timestamp;
 const int bk_trig_timeout = 10;
 
-#define BKSERIAL Serial3
+#define BKSERIAL Serial7
 // rx3 15
 // tx3 14
 
-const byte cam_trig_pin = 35;
+const byte cam_trig_pin = 41;
 int cam_pin_val;
 
 
@@ -70,7 +60,7 @@ void setup() {
   // start DACs
   heading_dac.begin(0x62,&Wire);
   x_dac.begin(0x62,&Wire1);
-  y_dac.begin(0x62,&Wire2);
+  y_dac.begin(0x63,&Wire1);
 
   // Bruker setup
   pinMode(bk_scan_trig_pin, OUTPUT);
