@@ -1,5 +1,5 @@
 import os
-
+import pathlib
 import threading
 import queue
 import numpy as np
@@ -63,26 +63,29 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         # self.teensy_read_process.start()
 
         # initialize fly orientation plot
-        self.fly_theta = [np.pi/2.]
+        self.fly_theta = np.pi/2.
         self.fly_speed = 0.
         self.fly_orientation_plot = self.fly_orientation_preview.getPlotItem().plot() # look up usage of pyqtgraph
-        # self.fly_orientation_plot.addLine(x=0, pen=0.2)
-        # self.fly_orientation_plot.addLine(y=0, pen=0.2)
-        for r in range(2, 20, 2):
+        self.fly_orientation_preview.addLine(x=0, pen=0.2)
+        self.fly_orientation_preview.addLine(y=0, pen=0.2)
+        self.fly_orientation_preview.setXRange(-.08,.08)
+        self.fly_orientation_preview.setYRange(-.08,.08)
+        for r in np.arange(.001, .08, .01):
             circle = pg.QtGui.QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
             circle.setPen(pg.mkPen(0.2))
-            # self.fly_orientation_plot.addItem(circle)
+            self.fly_orientation_preview.addItem(circle)
 
         # Transform to cartesian and plot
-        # x = (self.fly_speed+1) * np.cos(self.fly_theta)
-        # y = (self.fly_speed+1) * np.sin(self.fly_theta)
-        # self.fly_orientation_plot.plot([0, x], [0, y], pen=(200, 200, 200), symbolBrush=(255, 0, 0), symbolPen='w')
+        x = (self.fly_speed+.02) * np.cos(self.fly_theta)
+        y = (self.fly_speed+.02) * np.sin(self.fly_theta)
+
+        self.fly_orientation_plot.setData([0, x], [0, y], pen=(200, 200, 200), symbolBrush=(255, 0, 0), symbolPen='w')
         # self.fly_orientation_plot.setData(self.fly_orientation_data)
-        # self.fly_orientation_preview.show()
-        #
-        # # initialize z stack plot
-        # self.z_proj_data = [0]
-        # self.scan_z_proj_plot = self.scan_z_proj_preview.getPlotItem().plot() # want to plot z-stack or BOT of glomeruli
+        self.fly_orientation_preview.show()
+
+        # initialize z stack plot
+        self.z_proj_data = [0]
+        self.scan_z_proj_plot = self.scan_z_proj_preview #.getPlotItem().plot() # want to plot z-stack or BOT of glomeruli
         # self.scan_z_proj_plot.setData([0])
         # self.scan_z_proj_preview.show()
 
@@ -93,8 +96,9 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         # #TODO: look up default timing on QTimer
         # self.cam_timer = QtCore.QTimer()
         # self.cam_timer.timeout.connect(self.cam_updater)
-        # self.fictrac_timer = QtCore.QTimer()
-        # self.fictrac_timer.timeout.connect(self.fictrac_plotter)
+        self.fictrac_timer = QtCore.QTimer()
+        self.fictrac_timer.timeout.connect(self.fictrac_plotter)
+        self.fictrac_timer.start()
         # self.zproj_timer = QtCore.QTimer()
         # self.zproj_timer.timeout.connect(self.zproj_plotter)
 
@@ -135,6 +139,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         #TODO: integrate Minseung's FicTrac_Utils
         if self.launch_fictrac_toggle.isChecked():
             self.ft_manager.open()
+            self.ft_manager.start_reading()
         else:
             self.ft_manager.close()
             #TODO: find Fictrac
@@ -191,19 +196,25 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
     def fictrac_plotter(self):
 
-        m = self.ft_manager.ft_queue.size
-        x, y, speed = 0, 0, 0
-        for _ in range(m):
-            heading = self.ft_manager.ft_queue.get()[17]
-            speed += self.ft_manager.ft_queue.get()[19]
-            x += np.sin(heading)
-            y += np.sing(heading)
+        if self.ft_manager.ft_subprocess.open_evnt.is_set():
 
-        x /= m
-        y /= m
-        speed /= m
-        self.fly_orientation_plot.setData((speed+1.) * np.array([0, x]),(speed+1.) * np.array([0, y]))
-        self.fly_orientation_preview.show()
+            m = self.ft_manager.ft_queue.qsize()
+            # print(m)
+            if m > 0:
+
+                x, y, speed = 0, 0, 0
+                for _ in range(m):
+                    line =  self.ft_manager.ft_queue.get()
+                    heading = float(line['heading'])
+                    speed += float(line['speed'])
+                    x += np.cos(heading)
+                    y += np.sin(heading)
+
+                x /= m
+                y /= m
+                speed /= m
+                self.fly_orientation_plot.setData((speed+.02) * np.array([0, x]),(speed+.02) * np.array([0, y]))
+                self.fly_orientation_preview.show()
 
     def zproj_plotter(self):
         pass
