@@ -178,8 +178,9 @@ class Ui_MainWindow(object):
         font.setPointSize(13)
         self.trigger_opto_push.setFont(font)
         self.trigger_opto_push.setObjectName("trigger_opto_push")
-        self.cam_prev = ImageView(self.centralwidget)
+        self.cam_prev = PlotWidget(self.centralwidget) #ImageItem(self.centralwidget) #ImageView(self.centralwidget)
         self.cam_prev.setGeometry(QtCore.QRect(20, 300, 341, 231))
+        # self.cam_prev.setRect(QtCore.QRect(20, 300, 341, 231))
         self.cam_prev.setObjectName("cam_prev")
         self.scan_z_proj_preview = PlotWidget(self.centralwidget)
         self.scan_z_proj_preview.setGeometry(QtCore.QRect(740, 300, 321, 231))
@@ -254,4 +255,4 @@ class Ui_MainWindow(object):
         self.save_fictrac_toggle.setText(_translate("MainWindow", "Save Fictrac"))
         self.fly_orientation_label.setText(_translate("MainWindow", "Animal orientation"))
 
-from pyqtgraph import ImageView, PlotWidget
+from pyqtgraph import ImageView, PlotWidget, ImageItem

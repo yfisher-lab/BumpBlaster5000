@@ -9,7 +9,7 @@ import pyqtgraph as pg
 from PyQt5.QtGui import QPixmap, QImage
 from functools import partial
 import sys
-# from cam import FJCam
+
 import gui
 import serial
 
@@ -67,7 +67,11 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         # initialize fly orientation plot
         self.fly_theta = np.pi/2.
         self.fly_speed = 0.
+        self.fly_orientation_pi = self.fly_orientation_preview.getPlotItem() # look up usage of pyqtgraph
         self.fly_orientation_plot = self.fly_orientation_preview.getPlotItem().plot() # look up usage of pyqtgraph
+        self.fly_orientation_pi.showAxis('left',False)
+        self.fly_orientation_pi.showAxis('bottom',False)
+        self.fly_orientation_pi.setAspectLocked(lock=True, ratio=1)
         self.fly_orientation_preview.addLine(x=0, pen=0.2)
         self.fly_orientation_preview.addLine(y=0, pen=0.2)
         self.fly_orientation_preview.setXRange(-.08,.08)
@@ -95,12 +99,23 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.cam = Flea3Cam()
         self.cam.connect()
         self.cam.start()
-        self.cam_prev.setImage(self.cam.get_frame())
+        self.cam_prev_plot = self.cam_prev.getPlotItem()
+        self.cam_curr_image = pg.ImageItem()
+        self.cam_prev_plot.addItem(self.cam_curr_image)
+        self.cam_prev_plot.showAxis('left',False)
+        self.cam_prev_plot.showAxis('bottom',False)
+        self.cam_prev_plot.setAspectLocked(lock=True, ratio=1)
+        self.cam_prev_plot.invertY(True)
+        # self.cam_imageitem = pg.ImageItem()
+        # self.cam_prev_plot.addItem(self.cam_imageitem)
+        # print(self.cam_curr_image)
+        self.cam_curr_image.setImage(self.cam.get_frame())
 
 
         # start timers for plot updating
         self.cam_timer = QtCore.QTimer()
         self.cam_timer.timeout.connect(self.cam_updater)
+        self.cam_timer.start(20)
 
         self.fictrac_timer = QtCore.QTimer()
         self.fictrac_timer.timeout.connect(self.fictrac_plotter)
@@ -198,7 +213,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         srl.close()
 
     def cam_updater(self):
-        self.cam_prev.setImage(self.cam.get_frame())
+        self.cam_curr_image.setImage(self.cam.get_frame())
 
     def fictrac_plotter(self):
 

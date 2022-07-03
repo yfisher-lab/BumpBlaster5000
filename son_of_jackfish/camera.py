@@ -1,5 +1,8 @@
+import time
 import PyCapture2 as pycap
 import numpy as np
+
+from utils import threaded
 
 
 class Flea3Cam:
@@ -19,19 +22,21 @@ class Flea3Cam:
         self.cam.disconnect()
 
     def start(self):
-        self.cam.startCapature()
+        self.cam.startCapture()
         # get first frame
+        time.sleep(.1)
         tmp_img = self.cam.retrieveBuffer()
         self.n_rows = tmp_img.getRows()
         self.n_cols = tmp_img.getCols()
+
 
     def stop(self):
         self.cam.stopCapture()
 
 
     def get_frame(self):
-        img = self.cam.retrieveBuffer
-        return np.array(img.getData(), dtype='uint8').reshape((self.n_rows, self.n_cols))
+        img = self.cam.retrieveBuffer()
+        return np.array(img.getData(), dtype='uint8').reshape((self.n_rows, self.n_cols)).T
 
 
 

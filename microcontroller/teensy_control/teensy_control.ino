@@ -33,6 +33,8 @@ int bk_opto_trig_timestamp;
 const int bk_trig_timeout = 10;
 
 #define BKSERIAL Serial7
+//Serial7.setTX(28);
+//Serial7.setRX(29);
 // rx3 15
 // tx3 14
 
