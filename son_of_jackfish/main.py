@@ -13,6 +13,8 @@ import sys
 import gui
 import serial
 
+from camera import Flea3Cam
+
 
 import fictrac_utils as ft_utils
 from utils import threaded
@@ -80,7 +82,6 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         y = (self.fly_speed+.02) * np.sin(self.fly_theta)
 
         self.fly_orientation_plot.setData([0, x], [0, y], pen=(200, 200, 200), symbolBrush=(255, 0, 0), symbolPen='w')
-        # self.fly_orientation_plot.setData(self.fly_orientation_data)
         self.fly_orientation_preview.show()
 
         # initialize z stack plot
@@ -91,11 +92,16 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
 
         #TODO: start camera and add checkbox to enable preview of camera, add data to box
+        self.cam = Flea3Cam()
+        self.cam.connect()
+        self.cam.start()
+        self.cam_prev.setImage(self.cam.get_frame())
+
 
         # start timers for plot updating
-        # #TODO: look up default timing on QTimer
-        # self.cam_timer = QtCore.QTimer()
-        # self.cam_timer.timeout.connect(self.cam_updater)
+        self.cam_timer = QtCore.QTimer()
+        self.cam_timer.timeout.connect(self.cam_updater)
+
         self.fictrac_timer = QtCore.QTimer()
         self.fictrac_timer.timeout.connect(self.fictrac_plotter)
         self.fictrac_timer.start()
@@ -192,7 +198,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         srl.close()
 
     def cam_updater(self):
-        pass
+        self.cam_prev.setImage(self.cam.get_frame())
 
     def fictrac_plotter(self):
 
