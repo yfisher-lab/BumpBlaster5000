@@ -62,6 +62,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self._isreading = threading.Event()
         self.teensy_read_queue = queue.Queue()
         self.teensy_read_handle = self.continuous_read()
+        # self._isscanning = threading.Event()
         # self.teensy_read_process.start()
 
         # initialize fly orientation plot
@@ -102,13 +103,10 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.cam_prev_plot = self.cam_prev.getPlotItem()
         self.cam_curr_image = pg.ImageItem()
         self.cam_prev_plot.addItem(self.cam_curr_image)
-        self.cam_prev_plot.showAxis('left',False)
-        self.cam_prev_plot.showAxis('bottom',False)
+        self.cam_prev_plot.showAxis('left', False)
+        self.cam_prev_plot.showAxis('bottom', False)
         self.cam_prev_plot.setAspectLocked(lock=True, ratio=1)
         self.cam_prev_plot.invertY(True)
-        # self.cam_imageitem = pg.ImageItem()
-        # self.cam_prev_plot.addItem(self.cam_imageitem)
-        # print(self.cam_curr_image)
         self.cam_curr_image.setImage(self.cam.get_frame())
 
 
@@ -120,6 +118,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.fictrac_timer = QtCore.QTimer()
         self.fictrac_timer.timeout.connect(self.fictrac_plotter)
         self.fictrac_timer.start()
+
         # self.zproj_timer = QtCore.QTimer()
         # self.zproj_timer.timeout.connect(self.zproj_plotter)
 
@@ -144,6 +143,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
             # set filenames
             self.ft_manager.stop_reading()
 
+
         self.start_scan_push.setEnabled(True)
         self.trigger_opto_push.setEnabled(False)
         self.stop_scan_push.setEnabled(True)
@@ -160,7 +160,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         #TODO: integrate Minseung's FicTrac_Utils
         if self.launch_fictrac_toggle.isChecked():
             self.ft_manager.open()
-            self.ft_manager.start_reading()
+            # self.ft_manager.start_reading()
         else:
             self.ft_manager.close()
             #TODO: find Fictrac
