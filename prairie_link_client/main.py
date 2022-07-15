@@ -7,17 +7,12 @@ import win32com.client
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QApplication, QFileDialog, QInputDialog
 import pyqtgraph as pg
-from PyQt5.QtGui import QPixmap, QImage
-from functools import partial
 import sys
+
 
 import gui
 import serial
 
-from camera import Flea3Cam
-
-
-import fictrac_utils as ft_utils
 from utils import threaded
 
 
@@ -27,6 +22,7 @@ class PLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         super(PLUI, self).__init__(parent)
         self.setupUi(self)
 
+        self._dummy_img = None
         self.open_prairie_link()
 
 
@@ -36,19 +32,22 @@ class PLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.ch2_active = False
 
         self.numSlicesInput.editingFinished.connect(self.set_num_slices)
+        self.num_slices = 1
         self.numSlicesInput.setText('1')
 
         self.plugin_plot = self.pluginViewer.getPlotItem()
         self.plugin_curr_image = pg.ImageItem()
         self.plugin_plot.addItem(self.plugin_curr_image)
-        self.plugin_plot.showAxis('left',False)
+        self.plugin_plot.showAxis('left', False)
         self.plugin_plot.showAxis('bottom', False)
         self.plugin_plot.setAspectLocked(lock=True, ratio=1)
-        self.plugin_curr_image.setImage(self.set_channel_image)
+        self.set_channel_image()
+
 
 
         self.plugin_timer = QtCore.QTimer()
         self.plugin_timer.timeout.connect(self.set_channel_image)
+        #TODO: set timeout based on number of lines in frame
         self.plugin_timer.start()
 
 
@@ -58,6 +57,8 @@ class PLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self._pl_active = threading.Event()
         self._pl_active.set()
 
+        self._dummy_img = np.zeros((self.pl.lines_per_frame, self.pl.pxls_per_line,3))
+
 
 
 
@@ -66,21 +67,28 @@ class PLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
         :return:
         '''
-        pass
+        self.ch1_active = True
 
     def set_ch2_active(self):
         '''
 
         :return:
         '''
-        pass
+        self.ch2_active = True
 
     def set_num_slices(self):
         '''
 
         :return:
         '''
-        pass
+        num_slices_txt = self.numSlicesInput.text()
+        try:
+            self.num_slices = int(num_slices_txt)
+        except ValueError:
+            self.numSlicesInput.setText('1')
+            self.num_slices = 1
+
+
 
 
     def set_channel_image(self):
@@ -88,10 +96,16 @@ class PLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
         :return:
         '''
-        pass
+        if not (self.ch1_active and self.ch2_active):
+            self.plugin_curr_image.setImage(self.channel_image)
+        else: # fuse channels
+            (r, g) = self.channel_image
+            self._dummy_img[:,:,0], self._dummy_img[:,:,1], self._dummy_img[:,:,2] = r, g, g
+            self.plugin_curr_image.setImage(self._dummy_img)
+
 
     @property
-    def get_channel_image(self):
+    def channel_image(self):
         '''
 
         :return:
@@ -108,4 +122,13 @@ class PLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
 
 
+def main():
+    app = QApplication(sys.argv)
+    form = PLUI()
+    form.show()
+    app.exec_()
+
+
+if __name__ == '__main__':
+    main()
 

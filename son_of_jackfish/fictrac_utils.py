@@ -5,13 +5,11 @@ import subprocess
 import threading
 import queue
 from utils import threaded
-import pathlib
+
+import pandas as pd
 
 FICTRAC_PATH = r'C:\Users\fisherlab\Documents\FicTrac211\fictrac.exe'
 CONFIG_PATH = r'C:\Users\fisherlab\Documents\FicTrac211\config.txt'
-
-
-# try using events, locks, or barriers instead of globals
 
 
 class FicTracSubProcess:
@@ -86,9 +84,10 @@ class FicTracSocketManager:
         :return:
         """
         # check if output file exists
-        ext = 1
+        post = 0
         while os.path.exists(fictrac_output_file):
-            fictrac_output_file = "%s_%d.log" % (os.path.splitext(fictrac_output_file)[0], ext)
+            post+=1
+            fictrac_output_file = "%s_%d.log" % (os.path.splitext(fictrac_output_file)[0], post)
 
 
 
@@ -112,15 +111,22 @@ class FicTracSocketManager:
         self._ft_output_handle = None
 
         if return_pandas:
-            pass
-            # TODO: load output file, set column names, convert to pandas array
+            df = pd.read_csv(self.ft_output_path, sep=' ', header=None,
+                               names=('FT', 'frame counter', 'delta rot. x (cam)',
+                                      'delta rot. y (cam)', 'delta rot. z (cam)',
+                                      'delta rot. error', 'delta rot. x (lab)',
+                                      'delta rot. y (lab)', 'delta rot. z (lab)',
+                                      'abs. rot. x (cam)', 'abs. rot. y (cam)',
+                                      'abs. rot. z (cam)', 'abs. rot. x (lab)',
+                                      'abs. rot. y (lab)', 'abs. rot. z (lab)',
+                                      'int. x (lab)', 'int. y (lab)', 'int. z (lab)',
+                                      'movement dir.', 'movement speed', 'int. forward',
+                                      'int. side', 'timestamp', 'sequence counter',
+                                      'delta timestamp', 'alt. timestamp'))
+            # delete self.ft_output_path
+            os.remove(self.ft_output_path)
 
-    def _output_file_to_pandas(self):
-        """
-
-        :return:
-        """
-        pass
+            return df
 
     def open_socket(self):
         """
@@ -159,6 +165,11 @@ class FicTracSocketManager:
         if isinstance(self._reading_thread_handle, threading.Thread):
             self._reading_thread_handle.join()
             self._reading_thread_handle = None
+
+        # find fictrac output files
+
+        # delete fictrac output files
+        #os.remove(os.getcwd())
 
 
     def read_ft_queue(self):
