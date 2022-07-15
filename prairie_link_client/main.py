@@ -10,14 +10,14 @@ import pyqtgraph as pg
 import sys
 
 
-import gui
+import plugin_viewer
 import serial
 
-from utils import threaded
+# from utils import threaded
 
 
 
-class PLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
+class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
     def __init__(self, parent=None):
         super(PLUI, self).__init__(parent)
         self.setupUi(self)
@@ -41,6 +41,8 @@ class PLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.plugin_plot.showAxis('left', False)
         self.plugin_plot.showAxis('bottom', False)
         self.plugin_plot.setAspectLocked(lock=True, ratio=1)
+        self.plugin_plot.invertY(True)
+        # self.plugin_plot.invertX(True)
         self.set_channel_image()
 
 
@@ -54,10 +56,12 @@ class PLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
     def open_prairie_link(self):
 
         self.pl = win32com.client.Dispatch("PrairieLink.Application")
+        self.pl.Connect()
+
         self._pl_active = threading.Event()
         self._pl_active.set()
 
-        self._dummy_img = np.zeros((self.pl.lines_per_frame, self.pl.pxls_per_line,3))
+        self._dummy_img = np.zeros((self.pl.LinesPerFrame(), self.pl.PixelsPerLine(), 3))
 
 
 
@@ -96,15 +100,16 @@ class PLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
         :return:
         '''
+        # print(self.channel_image())
         if not (self.ch1_active and self.ch2_active):
-            self.plugin_curr_image.setImage(self.channel_image)
+            self.plugin_curr_image.setImage(self.channel_image())
         else: # fuse channels
             (r, g) = self.channel_image
             self._dummy_img[:,:,0], self._dummy_img[:,:,1], self._dummy_img[:,:,2] = r, g, g
             self.plugin_curr_image.setImage(self._dummy_img)
 
 
-    @property
+    # @property
     def channel_image(self):
         '''
 
@@ -112,12 +117,12 @@ class PLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         '''
 
         if self.ch1_active and not self.ch2_active:
-            return self.pl.GetImage_2(1, self.pl.pxls_per_line, self.pl.lines_per_frame)
+            return np.array(self.pl.GetImage_2(1, self.pl.PixelsPerLine(), self.pl.LinesPerFrame())).T
         elif not self.ch1_active and self.ch2_active:
-            return self.pl.GetImage_2(1, self.pl.pxls_per_line, self.pl.lines_per_frame)
+            return np.array(self.pl.GetImage_2(2, self.pl.PixelsPerLine(), self.pl.LinesPerFrame())).T
         elif self.ch1_active and self.ch2_active:
-            return (self.pl.GetImage_2(1, self.pl.pxls_per_line, self.pl.lines_per_frame),
-                    self.pl.GetImage_2(2, self.pl.pxls_per_line, self.pl.lines_per_frame))
+            return (np.array(self.pl.GetImage_2(1, self.pl.PixelsPerLine(), self.pl.LinesPerFrame())),
+                    np.array(self.pl.GetImage_2(2, self.pl.PixelsPerLine(), self.pl.LinesPerFrame())))
 
 
 

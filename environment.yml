@@ -9,5 +9,6 @@ dependencies:
   - pyqtgraph
   - ipython
   - pandas
-  - python=3.9
+  - pywin32
+  - python=3.6
 prefix: C:\Users\markp\anaconda3\envs\BumpBlaster
