@@ -5,6 +5,8 @@ import subprocess
 import threading
 import queue
 from utils import threaded
+from glob import glob
+import time
 
 import pandas as pd
 
@@ -111,7 +113,7 @@ class FicTracSocketManager:
         self._ft_output_handle = None
 
         if return_pandas:
-            df = pd.read_csv(self.ft_output_path, sep=' ', header=None,
+            df = pd.read_csv(self.ft_output_path, sep=',', header=None,
                                names=('FT', 'frame counter', 'delta rot. x (cam)',
                                       'delta rot. y (cam)', 'delta rot. z (cam)',
                                       'delta rot. error', 'delta rot. x (lab)',
@@ -169,7 +171,11 @@ class FicTracSocketManager:
         # find fictrac output files
 
         # delete fictrac output files
+
         #os.remove(os.getcwd())
+        time.sleep(.1)
+        _ = [os.remove(_f) for _f in glob(os.path.join(os.getcwd(),"fictrac-*.log"))]
+        _ = [os.remove(_f) for _f in glob(os.path.join(os.getcwd(),"fictrac-*.dat"))]
 
 
     def read_ft_queue(self):

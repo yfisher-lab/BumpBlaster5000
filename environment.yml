@@ -8,5 +8,6 @@ dependencies:
   - pyserial
   - pyqtgraph
   - ipython
+  - pandas
   - python=3.9
 prefix: C:\Users\markp\anaconda3\envs\BumpBlaster

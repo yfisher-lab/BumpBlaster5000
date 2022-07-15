@@ -1,6 +1,8 @@
 import os
 import threading
 import queue
+import time
+
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QApplication, QFileDialog, QInputDialog
@@ -57,6 +59,8 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.teensy_read_queue = queue.Queue()
         self.teensy_read_handle = self.continuous_read()
 
+        while not self._isreading.is_set():
+            time.sleep(.01)
         self.teensy_queue_eater_handle = self.consume_queue()
 
         # initialize fly orientation plot
@@ -130,10 +134,13 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.trigger_opto_push.setEnabled(True)
         self.stop_scan_push.setEnabled(True)
 
-        self.ft_frames = {'start': None, 'stop': None}
+        self.ft_frames = {'start': None, 'abort': None}
 
     def stop_scan(self):
         self.teensy_input_serial.write(b'2')  # see teensy_control.ino
+        while self.ft_frames['abort'] is None:
+            time.sleep(.01)
+
         if self.ft_manager.ft_subprocess.open_evnt.is_set():
             df = self.ft_manager.stop_reading(return_pandas=True)
 
@@ -141,15 +148,19 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.trigger_opto_push.setEnabled(False)
         self.stop_scan_push.setEnabled(True)
 
-        start_index = df.index[df['frame counter'] == self.ft_frames['start']]
-        abort_index = df.index[df['frame counter'] == self.ft_frames['abort']]
-        df = df.iloc[start_index:abort_index]
+
+        print(self.ft_frames)
+        print(df['frame counter'].iloc[0:10])
+
+        idx = df.index[(df['frame counter'] >= self.ft_frames['start']) & (df['frame counter']<= self.ft_frames['abort'])]
+        df = df.loc[idx]
 
         ft_file = os.path.join(self.exp_path, "fictrac_aligned.csv")
         post = 0
         while os.path.exists(ft_file):
             post += 1
             ft_file = "%s_%d.csv" % (os.path.splitext(ft_file)[0], post)
+        print(ft_file)
         df.to_csv(ft_file)
 
         # for msg in iter(self.teensy_read_queue.get, b'END QUEUE\r\n'):
@@ -220,6 +231,8 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
         :return:
         '''
+
+
         while self._isreading.is_set():
             if self.teensy_read_queue.qsize() > 0:
                 msg = self.teensy_read_queue.get().decode('UTF-8').rstrip().split(',')
