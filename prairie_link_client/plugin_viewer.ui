@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
+    <width>1244</width>
     <height>600</height>
    </rect>
   </property>
@@ -108,7 +108,7 @@
    <widget class="QGraphicsView" name="pluginViewer">
     <property name="geometry">
      <rect>
-      <x>350</x>
+      <x>330</x>
       <y>100</y>
       <width>381</width>
       <height>341</height>
@@ -130,7 +130,7 @@
      <rect>
       <x>40</x>
       <y>190</y>
-      <width>151</width>
+      <width>211</width>
       <height>41</height>
      </rect>
     </property>
@@ -140,7 +140,7 @@
      </font>
     </property>
     <property name="text">
-     <string>Channel 1</string>
+     <string>Channel 1 (red PMT)</string>
     </property>
    </widget>
    <widget class="QRadioButton" name="ch2Button">
@@ -148,7 +148,7 @@
      <rect>
       <x>40</x>
       <y>260</y>
-      <width>197</width>
+      <width>211</width>
       <height>37</height>
      </rect>
     </property>
@@ -249,7 +249,7 @@
      </font>
     </property>
     <property name="text">
-     <string>Channel 2</string>
+     <string>Channel 2 (green PMT)</string>
     </property>
    </widget>
    <widget class="QLabel" name="numSlicesLabel">
@@ -332,6 +332,16 @@
     </property>
     <property name="text">
      <string>Number of Slices:</string>
+    </property>
+   </widget>
+   <widget class="QGraphicsView" name="pluginViewer_2">
+    <property name="geometry">
+     <rect>
+      <x>770</x>
+      <y>100</y>
+      <width>381</width>
+      <height>341</height>
+     </rect>
     </property>
    </widget>
   </widget>

@@ -10,20 +10,21 @@ import pyqtgraph as pg
 import sys
 
 
-import plugin_viewer
+import plugin_viewer_2
 import serial
 
 # from utils import threaded
 
 
 
-class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
-    def __init__(self, parent=None):
+class PLUI(QtWidgets.QMainWindow, plugin_viewer_2.Ui_MainWindow):
+    def __init__(self, parent=None, pl_connect = True):
         super(PLUI, self).__init__(parent)
         self.setupUi(self)
 
         self._dummy_img = None
-        self.open_prairie_link()
+        if pl_connect:
+            self.open_prairie_link()
 
 
         self.ch1Button.clicked.connect(self.set_ch1_active)
@@ -35,15 +36,31 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.num_slices = 1
         self.numSlicesInput.setText('1')
 
-        self.plugin_plot = self.pluginViewer.getPlotItem()
-        self.plugin_curr_image = pg.ImageItem()
-        self.plugin_plot.addItem(self.plugin_curr_image)
-        self.plugin_plot.showAxis('left', False)
-        self.plugin_plot.showAxis('bottom', False)
-        self.plugin_plot.setAspectLocked(lock=True, ratio=1)
-        self.plugin_plot.invertY(True)
-        # self.plugin_plot.invertX(True)
-        self.set_channel_image()
+        self.ch1_plot = self.ch1Viewer.getPlotItem()
+        self.ch1_curr_image = pg.ImageItem()
+        self.ch1_plot.addItem(self.plugin_curr_image)
+        self.ch1_plot.showAxis('left', False)
+        self.ch1_plot.showAxis('bottom', False)
+        self.ch1_plot.setAspectLocked(lock=True, ratio=1)
+        self.ch1_plot.invertY(True)
+
+        # add placeholder for EB or PB ROIs
+        self.set_ch1_image()
+        self.ch1_EB_rois = None
+        self.ch1_PB_rois = None
+
+        self.ch2_plot = self.ch2Viewer.getPlotItem()
+        self.ch2_curr_image = pg.ImageItem()
+        self.ch2_plot.addItem(self.plugin_curr_image)
+        self.ch2_plot.showAxis('left', False)
+        self.ch2_plot.showAxis('bottom', False)
+        self.ch2_plot.setAspectLocked(lock=True, ratio=1)
+        self.ch2_plot.invertY(True)
+
+        # add placeholder for EB or PB ROIs
+        self.set_ch2_image()
+        self.ch2_EB_rois = None
+        self.ch2_PB_rois = None
 
 
 
@@ -51,6 +68,15 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.plugin_timer.timeout.connect(self.set_channel_image)
         #TODO: set timeout based on number of lines in frame
         self.plugin_timer.start()
+
+        #TODO: add serial port to listen to commands from Teensy
+
+
+
+        #TODO: add 2nd plot for ch1 vs ch2 and update appropriately
+
+        #TODO: add roi drawing, segmenting, df/f, sending data over serial port
+
 
 
     def open_prairie_link(self):
@@ -100,6 +126,8 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
         :return:
         '''
+
+        #TODO: set channel to average slices
         # print(self.channel_image())
         if not (self.ch1_active and self.ch2_active):
             self.plugin_curr_image.setImage(self.channel_image())
@@ -123,6 +151,59 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         elif self.ch1_active and self.ch2_active:
             return (np.array(self.pl.GetImage_2(1, self.pl.PixelsPerLine(), self.pl.LinesPerFrame())),
                     np.array(self.pl.GetImage_2(2, self.pl.PixelsPerLine(), self.pl.LinesPerFrame())))
+
+    def start_PB_roi(self):
+
+        daisychain = pg.MultiRectROI()
+
+    def get_PB_phase(self):
+        return
+
+    def start_EB_roi(self):
+
+        outerEllipse = pg.EllipseROI([50, 50], [50, 50], pen=(3, 9))
+        innerEllipse = pg.EllipseROI([50, 50], [10, 10], pen=(3, 9))
+
+        # get center of inner ellipse
+        # either innerEllipse.pos() or calculate from masked image
+
+    def _divide_EB_roi(self, resolution = 16):
+
+        # pass
+        # x0, y0 = center of inner ellipse
+
+        # make masks
+
+        if resolution == 8:
+            self._8eb_rois()
+        elif resolution == 16:
+            self._16eb_rois()
+
+    def _8eb_rois(self):
+
+        masks = []
+
+    def _16eb_rois(self):
+
+        masks = []
+
+    def get_EB_phase(self):
+
+        #TODO: add toggle button that says which channel is numerator and which is denominator
+
+
+        # if numerator and denominator are same channel
+            # read baseline from a v low pass buffer
+
+        # if numerator and denom are different channels
+            # low pass denom
+
+        # calculate df/f for each wedge
+
+        # calculate mean resultant vector
+
+
+
 
 
 
