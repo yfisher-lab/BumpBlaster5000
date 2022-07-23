@@ -4,7 +4,7 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 import numpy as np
 
-pg.setConfigOptions() #imageAxisOrder='row-major')
+pg.setConfigOptions(imageAxisOrder='row-major')
 
 ## Create image to display
 arr = np.ones((100, 100), dtype=float)
@@ -50,9 +50,20 @@ rois.append(pg.EllipseROI([25, 25], [10, 10], pen=(3, 9), scaleSnap=True, transl
 
 def update(roi):
     print(roi.pos()[0],roi.size())
+    # print("getArraySlice", rois[0].getArraySlice(arr, img1a))
+    # img1b.setImage(_donut_mask(rois[0],rois[1], np.ones(arr.shape), img1a))
+    # img1b.setColorMap(pg.colormap.get('hsv',source='matplotlib'))
+    img1b.setImage(make_masks(rois[0], rois[1], np.ones(arr.shape), img1a)[1])
+    print((make_masks(rois[0], rois[1], np.ones(arr.shape), img1a)[1]>0).sum())
+    roi.translatable=False
+    roi.resizeable = False
+    for h in roi.getHandles():
+        roi.removeHandle(h)
+    # print(roi.getHandles())
+    # v1b.autoRange()
     # img1b.setImage(rois[0].getArrayRegion(arr, img1a)-rois[1].getArrayRegion(arr, img1a),
     #                levels = (0, arr.max()))
-    # v1b.autoRange()
+    v1b.autoRange()
 
 for roi in rois:
     roi.sigRegionChanged.connect(update)
@@ -65,24 +76,29 @@ def phase_calc(nrows,ncols, center = None):
         center = (int(nrows/2),int(ncols/2))
 
     for row, col in itertools.product(range(nrows),range(ncols)):
-        phase_mask[row, col] = np.arctan2(col-center[1].row-center[0])
+        phase_mask[row, col] = np.arctan2(col-center[1], row-center[0])
 
     return phase_mask
 
 def _donut_mask(outer_roi, inner_roi, ch_arr, ch_img):
-    outer_mask = outer_roi.getArrayRegion(ch_arr, ch_img)
-
+    outer_mask = 1.*(outer_roi.getArrayRegion(ch_arr, ch_img)>0)
+    # print('outer_mask shape',outer_mask.shape)
     _inner_mask = 1. * (inner_roi.getArrayRegion(ch_arr, ch_img) > 0)
+    # print('inner_mask shape', _inner_mask.shape)
     # top left corner
-    inner_mask_rel_pos = (outer_mask.shape[0] - int(outer_roi.pos()[1] - inner_roi.pos()[1]) - _inner_mask.shape[0],
-                          outer_mask.shape[1] - int(outer_roi.pos()[0] - inner_roi.pos()[0]))
-
+    print('positions', outer_roi.pos(), inner_roi.pos())
+    inner_mask_rel_pos = (int(inner_roi.pos()[1] - outer_roi.pos()[1]),
+                          int(inner_roi.pos()[0] - outer_roi.pos()[0]))
+    # inner_mask_rel_pos = (outer_mask.shape[0] - int(inner_roi.pos()[1] - outer_roi.pos()[1]),
+    #                       int(inner_roi.pos()[0] - outer_roi.pos()[0]))
+    print('inner_mask_rel_pos', inner_mask_rel_pos)
     inner_mask = np.zeros(outer_mask.shape)
     inner_mask[inner_mask_rel_pos[0]:inner_mask_rel_pos[0] + _inner_mask.shape[0],
     inner_mask_rel_pos[1]:inner_mask_rel_pos[1] + _inner_mask.shape[1]] = _inner_mask
 
     # EB shape
     donut_mask = 1. * ((outer_mask - inner_mask) > 1E-5)
+    donut_mask[donut_mask==0]=np.nan
     return donut_mask
 
 def make_masks(outer_roi, inner_roi, ch_arr, ch_img):
@@ -104,7 +120,7 @@ def pol2cart(rho, phi):
     y = rho * np.sin(phi)
     return x, y
 
-@jit
+# @jit
 def bump_vec(phase_mask, dff_img):
     x, y = pol2cart(dff_img, phase_mask)
     return cart2pol(x.sum(), y.sum())
@@ -130,44 +146,44 @@ def running_baseline(buff, width = 10):
 
 #
 #TODO: make subfunction that only uses np arrays and uses @jit decorator
-def get_wedge_masks(outer_roi, inner_roi, ch_arr, ch_img, resolution = 16 ):
-    # .pos() returns (x,y) relative to bottom left corner
-    #   size() also returs (x,y)
-
-    outer_mask = outer_roi.getArrayRegion(ch_arr, ch_img)
-    # outer_mask[outer_mask==0] = np.nan
-    # get phase of each pixel, assuming center of image patch is origin
-    phase_mask = phase_calc(*outer_mask.shape)
-
-
-    _inner_mask = 1.*(inner_roi.getArrayRegion(ch_arr, ch_img) > 0)
-    # top left corner
-    inner_mask_rel_pos = (outer_mask.shape[0] - int(outer_roi.pos()[1] - inner_roi.pos()[1]) - _inner_mask.shape[0],
-                          outer_mask.shape[1] - int(outer_roi.pos()[0] - inner_roi.pos()[0]) )
-
-    inner_mask = np.zeros(outer_mask.shape)
-    inner_mask[inner_mask_rel_pos[0]:inner_mask_rel_pos[0] + _inner_mask.shape[0],
-               inner_mask_rel_pos[1]:inner_mask_rel_pos[1] + _inner_mask.shape[1]] = _inner_mask
-
-    # EB shape
-    donut_mask = 1.*((outer_mask-inner_mask) > 1E-5)
-    phase_mask = phase_mask*donut_mask
-
-    r = dff(donut_mask*outer_roi.getArrayRegion(ch_arr, ch_img)),phase_mask
-
-    # compare speed of averaging then doing mean vs this method
-    #     wedge_masks = np.zeros([*donut_mask.shape, resolution])
-    #     bin_edges = np.linspace(0,2*np.pi,num=resolution+1)
-    #
-    #     bin_centers = []
-    #     for itr, (ledge, redge)  in enumerate(zip(bin_edges[:-1].tolist(), bin_edges[1:].tolist())):
-    #         wedge_masks[:,:,itr] = 1.*(donut_mask * (phase_mask>=ledge) * (phase_mask<redge))
-    #         bin_centers.append(ledge+redge)
-    #
-    #     return wedge_masks, bin_centers
-    #
-
-
+# def get_wedge_masks(outer_roi, inner_roi, ch_arr, ch_img, resolution = 16 ):
+#     # .pos() returns (x,y) relative to bottom left corner
+#     #   size() also returs (x,y)
+#
+#     outer_mask = outer_roi.getArrayRegion(ch_arr, ch_img)
+#     # outer_mask[outer_mask==0] = np.nan
+#     # get phase of each pixel, assuming center of image patch is origin
+#     phase_mask = phase_calc(*outer_mask.shape)
+#
+#
+#     _inner_mask = 1.*(inner_roi.getArrayRegion(ch_arr, ch_img) > 0)
+#     # top left corner
+#     inner_mask_rel_pos = (outer_mask.shape[0] - int(outer_roi.pos()[1] - inner_roi.pos()[1]) - _inner_mask.shape[0],
+#                           outer_mask.shape[1] - int(outer_roi.pos()[0] - inner_roi.pos()[0]) )
+#
+#     inner_mask = np.zeros(outer_mask.shape)
+#     inner_mask[inner_mask_rel_pos[0]:inner_mask_rel_pos[0] + _inner_mask.shape[0],
+#                inner_mask_rel_pos[1]:inner_mask_rel_pos[1] + _inner_mask.shape[1]] = _inner_mask
+#
+#     # EB shape
+#     donut_mask = 1.*((outer_mask-inner_mask) > 1E-5)
+#     phase_mask = phase_mask*donut_mask
+#
+#     r = dff(donut_mask*outer_roi.getArrayRegion(ch_arr, ch_img)),phase_mask
+#
+#     # compare speed of averaging then doing mean vs this method
+#     #     wedge_masks = np.zeros([*donut_mask.shape, resolution])
+#     #     bin_edges = np.linspace(0,2*np.pi,num=resolution+1)
+#     #
+#     #     bin_centers = []
+#     #     for itr, (ledge, redge)  in enumerate(zip(bin_edges[:-1].tolist(), bin_edges[1:].tolist())):
+#     #         wedge_masks[:,:,itr] = 1.*(donut_mask * (phase_mask>=ledge) * (phase_mask<redge))
+#     #         bin_centers.append(ledge+redge)
+#     #
+#     #     return wedge_masks, bin_centers
+#     #
+#
+#
 
 
 
