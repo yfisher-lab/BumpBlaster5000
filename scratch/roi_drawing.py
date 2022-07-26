@@ -34,7 +34,12 @@ label1 = w1.addLabel(text, row=0, col=0)
 v1a = w1.addViewBox(row=1, col=0, lockAspect=True)
 v1b = w1.addViewBox(row=2, col=0, lockAspect=True)
 img1a = pg.ImageItem(arr)
+x = np.linspace(0,100)
+y = 50*np.cos(x)+50
+plot1a = pg.PlotDataItem(x,y)
+
 v1a.addItem(img1a)
+v1a.addItem(plot1a)
 img1b = pg.ImageItem()
 v1b.addItem(img1b)
 v1a.disableAutoRange('xy')
@@ -53,12 +58,21 @@ def update(roi):
     # print("getArraySlice", rois[0].getArraySlice(arr, img1a))
     # img1b.setImage(_donut_mask(rois[0],rois[1], np.ones(arr.shape), img1a))
     # img1b.setColorMap(pg.colormap.get('hsv',source='matplotlib'))
+
+
+    # pos, size = roi.pos(), roi.size()
+    # _roi = pg.EllipseROI(pos, size, pen=(3, 9), rotatable=False, movable = False, resizable=False)
+    # rois[0] = _roi
+    # v1a.removeItem(roi)
+    # v1a.addItem(_roi)
     img1b.setImage(make_masks(rois[0], rois[1], np.ones(arr.shape), img1a)[1])
-    print((make_masks(rois[0], rois[1], np.ones(arr.shape), img1a)[1]>0).sum())
-    roi.translatable=False
-    roi.resizeable = False
-    for h in roi.getHandles():
-        roi.removeHandle(h)
+    print('roi slice')
+    print(roi.getArraySlice(arr, img1a)[0])
+    # print((make_masks(rois[0], rois[1], np.ones(arr.shape), img1a)[1]>0).sum())
+    # roi.translatable=False
+    # roi.resizeable = False
+    # for h in roi.getHandles():
+    #     roi.removeHandle(h)
     # print(roi.getHandles())
     # v1b.autoRange()
     # img1b.setImage(rois[0].getArrayRegion(arr, img1a)-rois[1].getArrayRegion(arr, img1a),
