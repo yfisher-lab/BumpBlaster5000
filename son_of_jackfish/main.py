@@ -26,6 +26,8 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         super(FLUI, self).__init__(parent)
         self.setupUi(self)
 
+
+
         ## Teensy connections
         self.start_scan_push.clicked.connect(self.start_scan)
         self.stop_scan_push.clicked.connect(self.stop_scan)
@@ -179,7 +181,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
     def toggle_cam_view(self):
         self.cam_view = self.cam_view_toggle.isChecked()
 
-    def shutdown(self):
+    def closeEvent(self, event: QtGui.QCloseEvent):
 
         if self.ft_manager.ft_subprocess.open_evnt.is_set():
             self.ft_manager.close()
@@ -196,6 +198,8 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         # close cameras
         self.cam.stop()
         self.disconnect()
+        event.accept()
+
 
     def set_path(self):
 
@@ -280,7 +284,9 @@ def main():
     app = QApplication(sys.argv)
     form = FLUI()
     form.show()
-    app.exec_()
+    r = app.exec_()
+    # form.shutdown()
+    sys.exit(r)
 
 
 if __name__ == '__main__':

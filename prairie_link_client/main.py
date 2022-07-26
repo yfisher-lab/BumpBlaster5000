@@ -4,7 +4,7 @@ import sys
 
 import numpy as np
 import win32com.client
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import QApplication
 import pyqtgraph as pg
 # import serial
@@ -34,6 +34,9 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
             self._zstack_period = self._frame_period * self._zstack_frames
             self._pl_active = threading.Event()
             self._dummy_img = None
+
+            # continuous read serial
+            # get queue
 
         # connect channel view buttons
         self.ch1ViewButton.stateChanged.connect(self.set_ch1_active)
@@ -506,12 +509,26 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self._bump_mag = None
         self._bump_phase = None
 
+    def closeEvent(self, event: QtGui.QCloseEvent):
+        # close serial ports
+
+        # disconnect from prairie link
+        self.pl.Disconnect()
+
+        # join threads
+
+        event.accept()
+
+
+
 
 def main():
     app = QApplication(sys.argv)
-    form = PLUI()
-    form.show()
-    app.exec_()
+    widget = PLUI()
+    widget.show()
+    r = app.exec_()
+    sys.exit(r)
+
 
 
 if __name__ == '__main__':
