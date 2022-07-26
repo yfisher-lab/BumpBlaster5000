@@ -13,7 +13,7 @@ import serial
 
 import plugin_viewer
 # from .. import utils
-from utils import pol2cart, cart2pol, threaded
+from BumpBlaster5000.utils import pol2cart, cart2pol, threaded
 
 
 class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):

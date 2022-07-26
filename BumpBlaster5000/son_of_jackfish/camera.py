@@ -2,8 +2,6 @@ import time
 import PyCapture2 as pycap
 import numpy as np
 
-from utils import threaded
-
 
 class Flea3Cam:
     def __init__(self, serial_number = 13192198):

@@ -13,7 +13,7 @@ import serial
 import gui
 from camera import Flea3Cam
 import fictrac_utils as ft_utils
-from utils import threaded
+from BumpBlaster5000.utils import threaded
 
 TEENSY_INPUT_COM = "COM7"
 TEENSY_OUTPUT_COM = "COM9"

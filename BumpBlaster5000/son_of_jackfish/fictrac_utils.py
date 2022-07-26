@@ -4,7 +4,7 @@ import select
 import subprocess
 import threading
 import queue
-from utils import threaded
+from BumpBlaster5000.utils import threaded
 from glob import glob
 import time
 
