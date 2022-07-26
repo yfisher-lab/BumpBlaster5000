@@ -12,6 +12,7 @@ import pyqtgraph as pg
 import serial
 
 import plugin_viewer
+# from .. import utils
 from utils import pol2cart, cart2pol, threaded
 
 
