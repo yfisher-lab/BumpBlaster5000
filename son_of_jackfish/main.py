@@ -285,7 +285,6 @@ def main():
     form = FLUI()
     form.show()
     r = app.exec_()
-    # form.shutdown()
     sys.exit(r)
 
 

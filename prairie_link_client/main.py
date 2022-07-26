@@ -10,7 +10,7 @@ import pyqtgraph as pg
 # import serial
 
 import plugin_viewer
-from utils import pol2cart, cart2pol
+from utils import pol2cart, cart2pol, threaded
 
 
 class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
@@ -118,6 +118,29 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         # TODO: add serial port to listen to commands from Teensy
 
         # TODO: df/f, sending data over serial port
+
+    @threaded
+    def continuous_read_write_teensy_serial(self):
+        # while prairie link is active
+
+        # if serial available
+        # put in prairie link queue
+
+        # if data in output queue
+        # write lines
+        #ToDo: make output queue
+        pass
+
+    @threaded
+    def digest_teensy_queue(self):
+
+        # while prairie link is active
+
+        # if prairie link queue is not empty
+        # send queue commands to prairie link
+        pass
+
+
 
     def open_prairie_link(self):
 
