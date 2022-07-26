@@ -1,20 +1,22 @@
 import itertools
+import queue
 import threading
 import sys
+import time
 
 import numpy as np
 import win32com.client
 from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import QApplication
 import pyqtgraph as pg
-# import serial
+import serial
 
 import plugin_viewer
 from utils import pol2cart, cart2pol, threaded
 
 
 class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
-    def __init__(self, parent=None, pl_connect=True):
+    def __init__(self, parent=None):
         super(PLUI, self).__init__(parent)
         self.setupUi(self)
 
@@ -28,15 +30,17 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
         # connect to prairie link
         self.pl = None
-        if pl_connect:
-            self.open_prairie_link()
-            self._frame_period = self._get_frame_period()
-            self._zstack_period = self._frame_period * self._zstack_frames
-            self._pl_active = threading.Event()
-            self._dummy_img = None
+        self._pl_active = threading.Event()
+        self.open_prairie_link()
+        self._frame_period = self._get_frame_period()
+        self._zstack_period = self._frame_period * self._zstack_frames
+        self._dummy_img = None
 
-            # continuous read serial
-            # get queue
+        while not self._pl_active.is_set():
+            time.sleep(.01)
+        self.teensy_srl_handle = self.continuous_read_teensy_pl_commands()
+
+
 
         # connect channel view buttons
         self.ch1ViewButton.stateChanged.connect(self.set_ch1_active)
@@ -97,6 +101,8 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self._bump_signal = None
         self._bump_mag = None
         self._bump_phase = None
+        self._bump_queue = queue.Queue()
+        self.bump_srl_handle = self.write_bump_data_serial()
 
         # bump viewer
         # TODO: set colormap and pen color for plots
@@ -120,25 +126,25 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         # TODO: df/f, sending data over serial port
 
     @threaded
-    def continuous_read_write_teensy_serial(self):
-        # while prairie link is active
+    def continuous_read_teensy_pl_commands(self, teensy_com='COM12', baudrate=115200):
 
-        # if serial available
-        # put in prairie link queue
-
-        # if data in output queue
-        # write lines
-        #ToDo: make output queue
-        pass
+        with serial.Serial(teensy_com, baudrate=baudrate) as srl:
+            while self._pl_active.is_set():
+                # read serial and send as commands to Prairie Link
+                self.pl.SendScriptCommands(srl.readline().decode('UTF-8').rstrip())
 
     @threaded
-    def digest_teensy_queue(self):
+    def write_bump_data_serial(self, vr_com='COM11', baudrate=115200):
+        #ToDo: make com port names and baudrates a parameter saved in a separate file
 
         # while prairie link is active
-
-        # if prairie link queue is not empty
-        # send queue commands to prairie link
-        pass
+        with serial.Serial(vr_com, baudrate=baudrate) as srl:
+            while self._pl_active.is_set():
+                try:
+                    bump_data = self._bump_queue.get()
+                    srl.write(bump_data.encode('utf-8'))
+                except queue.Queue.Empty:
+                    pass
 
 
 
@@ -515,6 +521,8 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self._bump_phase[:, :-1] = self._bump_phase[:, 1:]
         self._bump_phase[:, -1] = phase
 
+        self._bump_queue.put(f"{mag}, {phase}\n")
+
     def _plot_bump(self):
         self.bump_heatmap.setImage(self._bump_signal)
         self.bump_plot.setData(np.arange(0, self._bump_signal.shape[1]), self._bump_phase)
@@ -537,8 +545,11 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
         # disconnect from prairie link
         self.pl.Disconnect()
+        self._pl_active.clear()
 
         # join threads
+        self.teensy_srl_handle.join()
+        self.bump_srl_handle.join()
 
         event.accept()
 

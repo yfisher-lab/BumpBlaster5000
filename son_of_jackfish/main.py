@@ -2,18 +2,16 @@ import os
 import threading
 import queue
 import time
+import sys
 
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QApplication, QFileDialog, QInputDialog
 import pyqtgraph as pg
-import sys
-
-import gui
 import serial
 
+import gui
 from camera import Flea3Cam
-
 import fictrac_utils as ft_utils
 from utils import threaded
 
