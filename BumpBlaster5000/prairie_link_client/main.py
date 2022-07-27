@@ -21,7 +21,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         super(PLUI, self).__init__(parent)
         self.setupUi(self)
 
-        pg.setConfigOptions(imageAxisOrder='row-major')
+        pg.setConfigOptions(imageAxisOrder='row-major', antialias=True)
 
         # connect number of channels input, set default
         self.numSlicesInput.editingFinished.connect(self.set_num_slices)
@@ -33,7 +33,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.pl = None
         self._pl_active = threading.Event()
         self.open_prairie_link()
-        self._frame_period = self._get_frame_period()
+        self._get_frame_period(reset_timer=False)
         self._zstack_period = self._frame_period * self._zstack_frames
         self._dummy_img = None
 
@@ -56,22 +56,23 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
         # make channel views into pyqtgraph images
         self.ch1_plot = self.ch1Viewer.getPlotItem()
+        self.ch1_plot.setMouseEnabled(x=False,y=False)
         self.ch1_curr_image = pg.ImageItem()
-        self.ch1_plot.addItem(self.plugin_curr_image)
+        self.ch1_plot.addItem(self.ch1_curr_image)
         self.ch1_plot.showAxis('left', False)
         self.ch1_plot.showAxis('bottom', False)
-        self.ch1_plot.setAspectLocked(lock=True, ratio=1)
-        self.ch1_plot.invertY(True)
-        self.set_ch1_image()
+        # self.ch1_plot.setAspectLocked(lock=True, ratio=1)
+        # self.ch1_plot.invertY(True)
+        # self.set_ch1_image()
 
         self.ch2_plot = self.ch2Viewer.getPlotItem()
         self.ch2_curr_image = pg.ImageItem()
-        self.ch2_plot.addItem(self.plugin_curr_image)
+        self.ch2_plot.addItem(self.ch2_curr_image)
         self.ch2_plot.showAxis('left', False)
         self.ch2_plot.showAxis('bottom', False)
-        self.ch2_plot.setAspectLocked(lock=True, ratio=1)
-        self.ch2_plot.invertY(True)
-        self.set_ch2_image()
+        # self.ch2_plot.setAspectLocked(lock=True, ratio=1)
+        # self.ch2_plot.invertY(True)
+        # self.set_ch2_image()
 
         # initialize rois
         self.rois = None
@@ -82,7 +83,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.wedge_centers = None
         self.loadPBROIsButton.clicked.connect(self.load_PB_rois)
         self.clearROIsButton.clicked.connect(self.clear_rois)
-        self.roiLockCheckBox.stateChanged(self.lock_rois)
+        self.roiLockCheckBox.stateChanged.connect(self.lock_rois)
         self._rois_locked = False
 
         # radio button .toggled.connect()
@@ -109,8 +110,8 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         # TODO: set colormap and pen color for plots
         self.bump_viewer = self.bumpViewer.getPlotItem()
         self.bump_heatmap = pg.ImageItem()
-        self.bump_viewer.addItem(self.plugin_heatmap)
-        self.bump_plot = pg.PlotDataItem()
+        self.bump_viewer.addItem(self.bump_heatmap)
+        self.bump_plot = pg.PlotDataItem(pen=pg.mkPen(color='r',width=3))
         self.bump_viewer.addItem(self.bump_plot)
 
         # self.bump_.showAxis('left', False)
@@ -118,9 +119,10 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         # self.bump_plot.setAspectLocked(lock=True, ratio=1)
         # self.bump_plot.invertY(True)
 
-        self.frame_timer = QtCore.QTimer(self._frame_period)
-        self.frame_timer.timeout.connect(self.frame_update())
-        self.frame_timer.start()
+        self.frame_timer = QtCore.QTimer()
+        self.frame_timer.timeout.connect(self.frame_update)
+        self.frame_timer.start(self._frame_period)
+        # ToDo: stop and restart time with new frame period if dimensions change
 
         # TODO: add serial port to listen to commands from Teensy
 
@@ -160,10 +162,13 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
     def _set_dummy_img(self):
         if self._pl_active.is_set():
-            self._dummy_img = np.ones((self.pl.LinesPerFrame(), self.pl.PixelsPerLine(), 3))
+            self._dummy_img = np.ones((self.pl.LinesPerFrame(), self.pl.PixelsPerLine()))
 
-    def _get_frame_period(self):
+    def _get_frame_period(self, reset_timer = True):
         self._frame_period = np.float(self.pl.GetState("framePeriod"))
+        if reset_timer:
+            self.frame_timer.stop()
+            self.frame_timer.start(self._frame_period)
 
     def set_ch1_active(self):
         '''
@@ -242,31 +247,38 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
             # set image
             # TODO: add option in designer to do max or mean projection
             self.ch1_curr_image.setImage(self._zproj[1])
-            self.ch1_curr_image.autoRange()
+            self.ch1_plot.autoRange()
 
         if self.ch2_active:
             # set image
             self.ch2_curr_image.setImage(self._zproj[2])
-            self.ch2_curr_image.autoRange()
+            self.ch2_plot.autoRange()
 
     def _get_channel_image(self, channel):
         '''
 
         :return:
         '''
-        return np.array(self.pl.GetImage_2(channel, self.pl.PixelsPerLine(), self.pl.LinesPerFrame())).T
+        return np.array(self.pl.GetImage_2(channel, self.pl.LinesPerFrame(), self.pl.PixelsPerLine()))#.T
 
     def load_EB_rois(self):
 
         self.rois = {'type': 'EB',
-                     'outer_ellipse': pg.EllipseROI([50, 50], [50, 50], pen=(3, 9), scaleSnap=True, translateSnap=True),
-                     'inner_ellipse': pg.EllipseROI([70, 70], [10, 10], pen=(3, 9), scaleSnap=True, translateSnap=True)}
+                     'outer ellipse': pg.EllipseROI([50, 50], [50, 50], pen=(3, 9),
+                                                    rotatable=False, scaleSnap=True, translateSnap=True),
+                     'inner ellipse': pg.EllipseROI([70, 70], [10, 10], pen=(3, 9),
+                                                    rotatable=False, scaleSnap=True, translateSnap=True)}
 
-        self.ch1_plot.addItem(self.rois['outer_ellipse'])
-        self.ch1_plot.addItem(self.rois['inner_ellipse'])
+        self.ch1_plot.addItem(self.rois['outer ellipse'])
+        self.ch1_plot.addItem(self.rois['inner ellipse'])
 
-        self.ch2_plot.addItem(self.rois['outer_ellipse'])
-        self.ch2_plot.addItem(self.rois['inner_ellipse'])
+        # self.ch2_plot.addItem(self.rois['outer ellipse'])
+        # self.ch2_plot.addItem(self.rois['inner ellipse'])
+        #ToDo: make roi copy for ch2_plot and a call back to make sure positions match
+
+        self.loadEBROIsButton.setEnabled(False)
+        self.loadPBROIsButton.setEnabled(False)
+
 
     def load_PB_rois(self):
         raise NotImplementedError
@@ -274,14 +286,17 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
     def clear_rois(self):
 
         if self.rois['type'] == 'EB':
-            self.ch1_plot.removeItem(self.rois['outer_ellipse'])
-            self.ch1_plot.removeItem(self.rois['inner_ellipse'])
+            self.ch1_plot.removeItem(self.rois['outer ellipse'])
+            self.ch1_plot.removeItem(self.rois['inner ellipse'])
 
-            self.ch2_plot.removeItem(self.rois['outer_ellipse'])
-            self.ch2_plot.removeItem(self.roise['inner_ellipse'])
+            self.ch2_plot.removeItem(self.rois['outer ellipse'])
+            self.ch2_plot.removeItem(self.rois['inner ellipse'])
 
         elif self.rois['type'] == 'PB':
             raise NotImplementedError
+
+        self.loadEBROIsButton.setEnabled(True)
+        self.loadPBROIsButton.setEnabled(True)
 
     def lock_rois(self):
 
@@ -291,13 +306,13 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
                 if key != 'type':
                     pos, size = val.pos(), val.size()
                     self.ch1_plot.removeItem(self.rois[key])
-                    self.ch2_plot.removeItem(self.rois[key])
+                    # self.ch2_plot.removeItem(self.rois[key])
 
                     if self.rois['type'] == "EB":
                         self.rois[key] = pg.EllipseROI(pos, size, pen=(3, 9), movable=False, rotatable=False,
-                                                       resizable=False)
+                                                       resizable=False, scaleSnap=True, translateSnap=True)
                         self.ch1_plot.addItem(self.rois[key])
-                        self.ch2_plot.addItem(self.rois[key])
+                        # self.ch2_plot.addItem(self.rois[key])
                     elif self.rois['type'] == "PB":
                         raise NotImplementedError
 
@@ -315,12 +330,12 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
                 if key != 'type':
                     pos, size = val.pos(), val.size()
                     self.ch1_plot.removeItem(self.rois[key])
-                    self.ch2_plot.removeItem(self.rois[key])
+                    # self.ch2_plot.removeItem(self.rois[key])
 
                     if self.rois['type'] == "EB":
-                        self.rois[key] = pg.EllipseROI(pos, size, pen=(3, 9), scaleSnap=True, translateSnap=True),
+                        self.rois[key] = pg.EllipseROI(pos, size, pen=(3, 9), scaleSnap=True, translateSnap=True)
                         self.ch1_plot.addItem(self.rois[key])
-                        self.ch2_plot.addItem(self.rois[key])
+                        # self.ch2_plot.addItem(self.rois[key])
                     elif self.rois['type'] == "PB":
                         raise NotImplementedError
 
@@ -342,16 +357,19 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
             if self.rois['type'] == 'EB':
                 # active pixel mask
                 bounding_slices, _donut_mask = self._make_donut_mask()
+                print('bounding slices', bounding_slices)
 
                 # get circular phase of each pixel, assuming origin in center of larger roi
                 _phase_mask = self.phase_calc(_donut_mask.shape[0], _donut_mask.shape[1])
                 _phase_mask *= _donut_mask
 
                 # embed masks in img shape extracted from PrairieView
-                donut_mask = np.copy(self._dummy_img)
+                donut_mask = 0.*self._dummy_img
+                print('sliced array shape', donut_mask[bounding_slices[0], bounding_slices[1]].shape)
+                #ToDo: make sure dimensions don't get screwed up when real image is present
                 donut_mask[bounding_slices[0], bounding_slices[1]] = _donut_mask
 
-                phase_mask = np.copy(self._dummy_img)
+                phase_mask = 0*self._dummy_img
                 phase_mask[bounding_slices[0], bounding_slices[1]] = _phase_mask
 
                 # bin wedges
@@ -367,7 +385,8 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
                     self.wedge_sizes.append(tmp_mask.ravel().sum())
 
                 self.wedge_centers = np.array(self.wedge_centers)
-                self.wedge_sizes = np.array(self.wedge_size)
+                self.wedge_sizes = np.array(self.wedge_sizes)
+                print('wedge size', self.wedge_sizes)
             elif self.rois['type'] == 'PB':
                 raise NotImplementedError
             else:
@@ -375,19 +394,24 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
     def _make_donut_mask(self):
 
-        bounding_slices = self.rois['outer_ellipse'].getArraySlice(self._dummy_img, self.ch1_curr_image)
+        bounding_slices = self.rois['outer ellipse'].getArraySlice(self._dummy_img, self.ch1_curr_image)[0]
 
-        outer_mask = 1. * (self.rois['outer ellipse'].getArrayRegion(self._dummy_img, self.ch1_curr_image) > 0)
+        outer_mask = np.copy(self._dummy_img)[bounding_slices[0], bounding_slices[1]]
+        # fix the occasional 1 pixel error
+        _outer_mask = 1. * (self.rois['outer ellipse'].getArrayRegion(self._dummy_img, self.ch1_curr_image) > 0)
+        outer_mask[:_outer_mask.shape[0], :_outer_mask.shape[1]] = _outer_mask
+
         _inner_mask = 1. * (self.rois['inner ellipse'].getArrayRegion(self._dummy_img, self.ch1_curr_image) > 0)
 
-        inner_mask_rel_pos = (int(self.rois['inner ellipse'].pos()[1] - self.rois['outer ellipse'].pose()[1]),
-                              int(self.rois['inner ellipse'].pos()[0] - self.rois['outer ellipse'].pose()[0]))
+        inner_mask_rel_pos = (int(self.rois['inner ellipse'].pos()[1] - self.rois['outer ellipse'].pos()[1]),
+                              int(self.rois['inner ellipse'].pos()[0] - self.rois['outer ellipse'].pos()[0]))
 
         inner_mask = np.zeros(outer_mask.shape)
         inner_mask[inner_mask_rel_pos[0]:inner_mask_rel_pos[0] + _inner_mask.shape[0],
         inner_mask_rel_pos[1]:inner_mask_rel_pos[1] + _inner_mask.shape[1]] = _inner_mask
 
         donut_mask = 1. * ((outer_mask - inner_mask) > 1E-5)
+        print(donut_mask.shape)
         return bounding_slices, donut_mask
 
     @staticmethod
@@ -404,7 +428,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
     def set_func_ch(self):
 
-        if self.ch1FuncChanBfutton.isChecked():
+        if self.ch1FuncChanButton.isChecked():
             self._func_ch = 1
         elif self.ch2FuncChanButton.isChecked():
             self._func_ch = 2
@@ -439,14 +463,14 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
             self._stream_bump = False
             self._stop_streaming()
 
-    def _start_streaming(self, baseline_time=60, func_time=1, bump_signal_time=60):
+    def _start_streaming(self, baseline_time=60, func_time=.01, bump_signal_time=2):
         '''
 
         :param baseline_time: buffer size in seconds
         :return:
         '''
 
-        num_func_samples = int(func_time / self._zstack_period)
+        num_func_samples = int(np.maximum(func_time / self._zstack_period, 1))
         if self._baseline_ch == self._func_ch:
             num_baseline_samples = int(baseline_time / self._zstack_period)
         else:
@@ -458,9 +482,10 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
             # num rois, baseline_time
             self._baseline_data_buffer = np.nan * np.zeros([self.wedge_resolution, num_baseline_samples])
             self._func_data_buffer = np.nan * np.zeros([self.wedge_resolution, num_func_samples])
+            print('func buff size', self._func_data_buffer.shape)
             self._bump_signal = np.zeros((self.wedge_resolution, num_bump_samples))
-            self._bump_phase = np.zeros((self.wedge_resolution, num_bump_samples))
-            self._bump_mag = np.zeros((self.wedge_resolution, num_bump_samples))
+            self._bump_phase = np.zeros((num_bump_samples,))
+            self._bump_mag = np.zeros((num_bump_samples,))
         elif self.rois['type'] == 'PB':
             raise NotImplementedError
 
@@ -504,11 +529,12 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
     def _calc_bump_phase(self):
 
-        signal = self._func_data_buffer.mean(axis=1) / np.percentile(self._baseline_data_buffer, 5, axis=1)
+        signal = np.nanmean(self._func_data_buffer, axis=1) / np.nanpercentile(self._baseline_data_buffer + 1E-5, 5, axis=1)
 
         if self.rois['type'] == 'EB':
             x, y = pol2cart(signal, self.wedge_centers)
             mag, phase = cart2pol(x.mean(), y.mean())
+            phase = (phase+2*np.pi)%(2.*np.pi)
         elif self.rois['type'] == 'PB':
             mag, phase = None, None
             raise NotImplementedError
@@ -517,16 +543,16 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
         self._bump_signal[:, :-1] = self._bump_signal[:, 1:]
         self._bump_signal[:, -1] = signal
-        self._bump_mag[:, :-1] = self._bump_mag[:, 1:]
-        self._bump_mag[:, -1] = mag
-        self._bump_phase[:, :-1] = self._bump_phase[:, 1:]
-        self._bump_phase[:, -1] = phase
+        self._bump_mag[:-1] = self._bump_mag[ 1:]
+        self._bump_mag[-1] = mag
+        self._bump_phase[:-1] = self._bump_phase[1:]
+        self._bump_phase[-1] = phase
 
         self._bump_queue.put(f"{mag}, {phase}\n")
 
     def _plot_bump(self):
         self.bump_heatmap.setImage(self._bump_signal)
-        self.bump_plot.setData(np.arange(0, self._bump_signal.shape[1]), self._bump_phase)
+        self.bump_plot.setData(np.arange(0, self._bump_signal.shape[1]), self._bump_phase /2./np.pi*self.wedge_resolution)
 
     def _send_bump_2_VR(self):
         # ToDo: send info over serial port to teensy or directly to VR computer
@@ -568,3 +594,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
