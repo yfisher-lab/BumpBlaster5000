@@ -11,4 +11,5 @@ dependencies:
   - pandas
   - pywin32
   - python=3.6
+  - numba
 prefix: C:\Users\markp\anaconda3\envs\BumpBlaster

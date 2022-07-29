@@ -10,20 +10,20 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import QApplication
 import pyqtgraph as pg
 import serial
+from numba import njit
 
 import plugin_viewer
-# from .. import utils
 from BumpBlaster5000.utils import pol2cart, cart2pol, threaded
 
 
 class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, wedge_resolution=16):
         super(PLUI, self).__init__(parent)
         self.setupUi(self)
 
         pg.setConfigOptions(imageAxisOrder='row-major', antialias=True)
 
-        # connect number of channels input, set default
+        # connect number of slices input, set default to 1
         self.numSlicesInput.editingFinished.connect(self.set_num_slices)
         self.num_slices = 1
         self._zstack_frames = 1
@@ -37,8 +37,13 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self._zstack_period = self._frame_period * self._zstack_frames
         self._dummy_img = None
 
+        # wait for prairie link to connect
+        #TODO: set max timeout and throw an error if prairie link doesn't connect
+        print("Waiting for PriaireLink to connect")
         while not self._pl_active.is_set():
             time.sleep(.01)
+        print("PrairieLink connected")
+        # connect to teensy serial port to read PL commands
         self.teensy_srl_handle = self.continuous_read_teensy_pl_commands()
 
 
@@ -49,6 +54,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self._ch1_data = None
         self.ch2ViewButton.stateChanged.connect(self.set_ch2_active)
         self.ch2_active = False
+        # channel viewer data placeholders
         self._zbuffers = {1: None,
                           2: None}
         self._zproj = {1: None,
@@ -56,7 +62,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
         # make channel views into pyqtgraph images
         self.ch1_plot = self.ch1Viewer.getPlotItem()
-        self.ch1_plot.setMouseEnabled(x=False,y=False)
+        self.ch1_plot.setMouseEnabled(x=False, y=False)
         self.ch1_curr_image = pg.ImageItem()
         self.ch1_plot.addItem(self.ch1_curr_image)
         self.ch1_plot.showAxis('left', False)
@@ -66,6 +72,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         # self.set_ch1_image()
 
         self.ch2_plot = self.ch2Viewer.getPlotItem()
+        self.ch2_plot.setMouseEnabled(x=False, y=False)
         self.ch2_curr_image = pg.ImageItem()
         self.ch2_plot.addItem(self.ch2_curr_image)
         self.ch2_plot.showAxis('left', False)
@@ -76,7 +83,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
         # initialize rois
         self.rois = None
-        self.wedge_resolution = 16
+        self.wedge_resolution = wedge_resolution # number of rois for EB
         # connect roi control buttons
         self.loadEBROIsButton.clicked.connect(self.load_EB_rois)
         self.wedge_masks = None
@@ -86,7 +93,6 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.roiLockCheckBox.stateChanged.connect(self.lock_rois)
         self._rois_locked = False
 
-        # radio button .toggled.connect()
         # connect df/f(r) buttons
         self.ch1FuncChanButton.toggled.connect(self.set_func_ch)
         self.ch2FuncChanButton.toggled.connect(self.set_func_ch)
@@ -104,16 +110,16 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self._bump_mag = None
         self._bump_phase = None
         self._bump_queue = queue.Queue()
+
+        # start serial port to send bump data to VR computer
         self.bump_srl_handle = self.write_bump_data_serial()
 
         # bump viewer
-        # TODO: set colormap and pen color for plots
         self.bump_viewer = self.bumpViewer.getPlotItem()
         self.bump_heatmap = pg.ImageItem()
         self.bump_viewer.addItem(self.bump_heatmap)
         self.bump_plot = pg.PlotDataItem(pen=pg.mkPen(color='r',width=3))
         self.bump_viewer.addItem(self.bump_plot)
-
         # self.bump_.showAxis('left', False)
         # self.bump_plot.showAxis('bottom', False)
         # self.bump_plot.setAspectLocked(lock=True, ratio=1)
@@ -122,27 +128,37 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.frame_timer = QtCore.QTimer()
         self.frame_timer.timeout.connect(self.frame_update)
         self.frame_timer.start(self._frame_period)
-        # ToDo: stop and restart time with new frame period if dimensions change
-
-        # TODO: add serial port to listen to commands from Teensy
-
-        # TODO: df/f, sending data over serial port
 
     @threaded
     def continuous_read_teensy_pl_commands(self, teensy_com='COM12', baudrate=115200):
+        '''
+        open serial port from teensy and send commands straight to prairie link,
+        undesired behavior if strings are not valid prairie link commands
+        :param teensy_com: com port for UART serial port from Teensy
+        :param baudrate:
+        :return:
+        '''
 
         with serial.Serial(teensy_com, baudrate=baudrate) as srl:
             while self._pl_active.is_set():
                 # read serial and send as commands to Prairie Link
+                # note this will block forever if commands aren't sent
+                # ToDo: set a timeout, if string is not empty, send to prairie link
                 self.pl.SendScriptCommands(srl.readline().decode('UTF-8').rstrip())
 
     @threaded
     def write_bump_data_serial(self, vr_com='COM11', baudrate=115200):
+        '''
+        send bump phase and magnitude to VR computer over dedicated serial port
+        :param vr_com: com port to VR computer
+        :param baudrate: baudrate
+        :return:
+        '''
         #ToDo: make com port names and baudrates a parameter saved in a separate file
 
-        # while prairie link is active
+
         with serial.Serial(vr_com, baudrate=baudrate) as srl:
-            while self._pl_active.is_set():
+            while self._pl_active.is_set(): # while prairie link is active
                 try:
                     bump_data = self._bump_queue.get()
                     srl.write(bump_data.encode('utf-8'))
@@ -152,19 +168,38 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
 
     def open_prairie_link(self):
+        '''
+        opens prairie link and sets a dummy image to match current frame size
+        :return:
+        '''
 
+        # make connection
         self.pl = win32com.client.Dispatch("PrairieLink.Application")
         self.pl.Connect()
 
+        # set thread safe event
         self._pl_active.set()
 
+        # set dummy image
         self._set_dummy_img()
 
     def _set_dummy_img(self):
-        if self._pl_active.is_set():
+        '''
+        make a dummy image of ones to help with mask creation and array allocation
+        :return:
+        '''
+        if self._pl_active.is_set(): # if connected to prairie link
             self._dummy_img = np.ones((self.pl.LinesPerFrame(), self.pl.PixelsPerLine()))
 
-    def _get_frame_period(self, reset_timer = True):
+    def _get_frame_period(self, reset_timer=True):
+        '''
+        Read frame period from prairie link and convert from string.
+
+        :param reset_timer: If true, reset QTimer to new frame period. This is usually the desired behavior but flag
+        exists to avoid errors during initialization
+        :return:
+        '''
+        # TODO: check this output, change to ms if necessary and round to int
         self._frame_period = np.float(self.pl.GetState("framePeriod"))
         if reset_timer:
             self.frame_timer.stop()
@@ -172,13 +207,16 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
     def set_ch1_active(self):
         '''
-
+        If ch1 viewer is set to active, update flags, reset prairie link parameters to match current scan settings
+        and allocate a buffer for the z stack
         :return:
         '''
         if self.ch1ViewButton.isChecked():
             self.ch1_active = True
+            # update scan settings
             self._set_dummy_img()
             self._get_frame_period()
+            # allocate zstack buffer
             self._zbuffers[1] = np.zeros((*self._dummy_img.shape, self._zstack_frames))
         else:
             self.ch1_active = False
@@ -414,8 +452,8 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         print(donut_mask.shape)
         return bounding_slices, donut_mask
 
-    @staticmethod
-    def phase_calc(nrows, ncols, center=None):
+    @njit
+    def phase_calc(self, nrows, ncols, center=None):
         phase_mat = np.zeros([nrows, ncols])
 
         if center is None:
@@ -508,7 +546,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         else:
             raise NotImplementedError
 
-    # @jit
+    @njit
     def _apply_EB_masks(self):
         mask_data = {1: None, 2: None}
         for ch, zproj in self._zproj.items():
@@ -527,9 +565,14 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self._func_data_buffer[:, :-1] = self._func_data_buffer[:, 1:]
         self._func_data_buffer[:, -1] = mask_data[self._func_ch]
 
+    @staticmethod
+    @njit
+    def _signal(func_data, baseline_data):
+        return np.nanmean(func_data, axis=1) / np.nanpercentile(baseline_data + 1E-5, 5, axis=1)
+
     def _calc_bump_phase(self):
 
-        signal = np.nanmean(self._func_data_buffer, axis=1) / np.nanpercentile(self._baseline_data_buffer + 1E-5, 5, axis=1)
+        signal = self._signal(self._func_data_buffer, self._baseline_data_buffer)
 
         if self.rois['type'] == 'EB':
             x, y = pol2cart(signal, self.wedge_centers)
