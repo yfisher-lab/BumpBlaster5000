@@ -38,15 +38,13 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self._dummy_img = None
 
         # wait for prairie link to connect
-        #TODO: set max timeout and throw an error if prairie link doesn't connect
+        # TODO: set max timeout and throw an error if prairie link doesn't connect
         print("Waiting for PriaireLink to connect")
         while not self._pl_active.is_set():
             time.sleep(.01)
         print("PrairieLink connected")
         # connect to teensy serial port to read PL commands
         self.teensy_srl_handle = self.continuous_read_teensy_pl_commands()
-
-
 
         # connect channel view buttons
         self.ch1ViewButton.stateChanged.connect(self.set_ch1_active)
@@ -83,7 +81,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
         # initialize rois
         self.rois = None
-        self.wedge_resolution = wedge_resolution # number of rois for EB
+        self.wedge_resolution = wedge_resolution  # number of rois for EB
         # connect roi control buttons
         self.loadEBROIsButton.clicked.connect(self.load_EB_rois)
         self.wedge_masks = None
@@ -92,6 +90,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.clearROIsButton.clicked.connect(self.clear_rois)
         self.roiLockCheckBox.stateChanged.connect(self.lock_rois)
         self._rois_locked = False
+        self._which_roi_moved = None
 
         # connect df/f(r) buttons
         self.ch1FuncChanButton.toggled.connect(self.set_func_ch)
@@ -118,7 +117,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.bump_viewer = self.bumpViewer.getPlotItem()
         self.bump_heatmap = pg.ImageItem()
         self.bump_viewer.addItem(self.bump_heatmap)
-        self.bump_plot = pg.PlotDataItem(pen=pg.mkPen(color='r',width=3))
+        self.bump_plot = pg.PlotDataItem(pen=pg.mkPen(color='r', width=3))
         self.bump_viewer.addItem(self.bump_plot)
         # self.bump_.showAxis('left', False)
         # self.bump_plot.showAxis('bottom', False)
@@ -154,18 +153,15 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         :param baudrate: baudrate
         :return:
         '''
-        #ToDo: make com port names and baudrates a parameter saved in a separate file
-
+        # ToDo: make com port names and baudrates a parameter saved in a separate file
 
         with serial.Serial(vr_com, baudrate=baudrate) as srl:
-            while self._pl_active.is_set(): # while prairie link is active
+            while self._pl_active.is_set():  # while prairie link is active
                 try:
                     bump_data = self._bump_queue.get()
                     srl.write(bump_data.encode('utf-8'))
                 except queue.Queue.Empty:
                     pass
-
-
 
     def open_prairie_link(self):
         '''
@@ -188,7 +184,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         make a dummy image of ones to help with mask creation and array allocation
         :return:
         '''
-        if self._pl_active.is_set(): # if connected to prairie link
+        if self._pl_active.is_set():  # if connected to prairie link
             self._dummy_img = np.ones((self.pl.LinesPerFrame(), self.pl.PixelsPerLine()))
 
     def _get_frame_period(self, reset_timer=True):
@@ -223,7 +219,8 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
     def set_ch2_active(self):
         '''
-
+        If ch2 viewer is set to active, update flags, reset prairie link parameters to match current scan settings
+        and allocate a buffer for the z stack
         :return:
         '''
         if self.ch2ViewButton.isChecked():
@@ -236,38 +233,46 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
     def set_num_slices(self):
         '''
+        read text box for number of slices in z stack and update dependent parameters
 
         :return:
         '''
+
         num_slices_txt = self.numSlicesInput.text()
         try:
             self.num_slices = int(num_slices_txt)
+            # deal with edge cases
             if self.num_slices == 1:
                 self._zstack_frames = 1
-
             elif self.num_slices > 1:
                 self._zstack_frames = self.num_slices + 1
-            else:
+            else:  # e.g. negative number or 0 accidentally input
                 self.num_slices = 1
                 self._zstack_frames = 1
                 self.numSlicesInput.setText('1')
-
-
-        except ValueError:
-            self.numSlicesInput.setText('1')
+        except ValueError:  # accidentally entered something that's not a number
+            self.numSlicesInput.setText('1')  # default to a single slince
             self.num_slices = 1
             self._zstack_frames = 1
 
+        # update the timing information
         self._get_frame_period()
         self._zstack_period = self._frame_period * self._zstack_frames
 
     def frame_update(self):
+        '''
+        main function for updating data on each new imaging frame
+        :return:
+        '''
+
+        # if ch1 data is needed
         if self.ch1_active or self._func_ch == 1 or self._baseline_ch == 1:
             self._zbuffers[1][:, :, :-1] = self._zbuffers[1][:, :, 1:]
             self._zbuffers[1][:, :, -1] = self._get_channel_image(1)
             # ToDo: mean vs max proj toggle in designer
             self._zproj[1] = np.amax(self._zbuffers[1], axis=-1)
 
+        # if ch2 data is needed
         if self.ch2_active or self._func_ch == 2 or self._baseline_ch == 2:
             self._zbuffers[2][:, :, :-1] = self._zbuffers[2][:, :, 1:]
             self._zbuffers[2][:, :, -1] = self._get_channel_image(2)
@@ -281,9 +286,12 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self._update_bump()
 
     def _set_channel_images(self):
+        '''
+        update data in pyqtgraph objects
+        :return:
+        '''
         if self.ch1_active:
             # set image
-            # TODO: add option in designer to do max or mean projection
             self.ch1_curr_image.setImage(self._zproj[1])
             self.ch1_plot.autoRange()
 
@@ -294,177 +302,263 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
     def _get_channel_image(self, channel):
         '''
+        Read image data over prairie link
+        This will be the data that is currently displayed on the viewer from prairie link. It is not the data that is
+        being saved to disk. Any averaging or other parameters that affect the data display will also affect this data.
+        :return:
+        '''
+        return np.array(self.pl.GetImage_2(channel, self.pl.LinesPerFrame(), self.pl.PixelsPerLine()))  # .T
+
+    def load_EB_rois(self):
+        '''
+        Load two ellipse rois and add objects to each plot item. The smaller one is assumed to stay the smaller one.
+
 
         :return:
         '''
-        return np.array(self.pl.GetImage_2(channel, self.pl.LinesPerFrame(), self.pl.PixelsPerLine()))#.T
-
-    def load_EB_rois(self):
-
         self.rois = {'type': 'EB',
-                     'outer ellipse': pg.EllipseROI([50, 50], [50, 50], pen=(3, 9),
-                                                    rotatable=False, scaleSnap=True, translateSnap=True),
-                     'inner ellipse': pg.EllipseROI([70, 70], [10, 10], pen=(3, 9),
-                                                    rotatable=False, scaleSnap=True, translateSnap=True)}
+                     'outer ellipse ch1': pg.EllipseROI([50, 50], [50, 50], pen=(3, 9),
+                                                        rotatable=False, scaleSnap=True, translateSnap=True),
+                     'inner ellipse ch1': pg.EllipseROI([70, 70], [10, 10], pen=(3, 9),
+                                                        rotatable=False, scaleSnap=True, translateSnap=True),
+                     'outer ellipse ch2': pg.EllipseROI([50, 50], [50, 50], pen=(3, 9),
+                                                        rotatable=False, scaleSnap=True, translateSnap=True),
+                     'inner ellipse ch2': pg.EllipseROI([70, 70], [10, 10], pen=(3, 9),
+                                                        rotatable=False, scaleSnap=True, translateSnap=True),
+                     }
 
-        self.ch1_plot.addItem(self.rois['outer ellipse'])
-        self.ch1_plot.addItem(self.rois['inner ellipse'])
+        # make sure roi locations and sizes are matched across channels
+        for k, v in self.rois.items():
+            self._which_roi_moved = k
+            v.sigRegionChangeFinished.connect(self._EB_match_roi_pos)
 
-        # self.ch2_plot.addItem(self.rois['outer ellipse'])
-        # self.ch2_plot.addItem(self.rois['inner ellipse'])
-        #ToDo: make roi copy for ch2_plot and a call back to make sure positions match
+        self.ch1_plot.addItem(self.rois['outer ellipse ch1'])
+        self.ch1_plot.addItem(self.rois['inner ellipse ch1'])
+
+        self.ch2_plot.addItem(self.rois['outer ellipse ch2'])
+        self.ch2_plot.addItem(self.rois['inner ellipse ch2'])
 
         self.loadEBROIsButton.setEnabled(False)
         self.loadPBROIsButton.setEnabled(False)
 
+    def _EB_match_roi_pos(self):
+        '''
+        Ensure ROI locations mirror each other across channel views
+        :return:
+        '''
+
+        roi = self.rois[self._which_roi_moved]
+        # avoid infinite callbacks
+        self._which_roi_moved = "echo"
+        # wait to update until end of function to reduce number of callbacks
+        # setPos and setSize by default emit a sigRegionChangeFinished signal
+        if self._which_roi_moved == 'outer ellipse ch1':
+            roi.setPos(self.rois['outer ellipse ch1'].pos(), update=False)
+            roi.setSize(self.rois['outer ellipse ch1'].size(), update=False)
+        elif self._which_roi_moved == 'inner ellipse ch1':
+            roi.setPos(self.rois['inner ellipse ch1'].pos(), update=False)
+            roi.setSize(self.rois['inner ellipse ch1'].size(), update=False)
+        elif self._which_roi_moved == 'outer ellipse ch2':
+            roi.setPos(self.rois['outer ellipse ch2'].pos(), update=False)
+            roi.setSize(self.rois['outer ellipse ch2'].size(), update=False)
+        elif self._which_roi_moved == 'inner ellipse ch2':
+            roi.setPos(self.rois['outer ellipse ch1'].pos(), update=False)
+            roi.setSize(self.rois['outer ellipse ch1'].size(), update=False)
+        elif self._which_roi_moved == "echo":
+            pass
+        else:
+            raise Exception("wrong roi key")
+
+        roi.stateChanged()
 
     def load_PB_rois(self):
         raise NotImplementedError
 
     def clear_rois(self):
+        '''
+        remove rois
+        :return:
+        '''
 
         if self.rois['type'] == 'EB':
-            self.ch1_plot.removeItem(self.rois['outer ellipse'])
-            self.ch1_plot.removeItem(self.rois['inner ellipse'])
+            self.ch1_plot.removeItem(self.rois['outer ellipse ch1'])
+            self.ch1_plot.removeItem(self.rois['inner ellipse ch1'])
 
-            self.ch2_plot.removeItem(self.rois['outer ellipse'])
-            self.ch2_plot.removeItem(self.rois['inner ellipse'])
+            self.ch2_plot.removeItem(self.rois['outer ellipse ch2'])
+            self.ch2_plot.removeItem(self.rois['inner ellipse ch2'])
+
 
         elif self.rois['type'] == 'PB':
             raise NotImplementedError
 
+        self.rois = None
         self.loadEBROIsButton.setEnabled(True)
         self.loadPBROIsButton.setEnabled(True)
 
     def lock_rois(self):
+        '''
+        lock the roi position and size and initialize masks for streaming data
+        :return:
+        '''
 
-        if self.roiLockCheckBox.isChecked():
+        if self.rois is not None:
+            if self.roiLockCheckBox.isChecked():
+                for key, val in self.rois.items():
 
-            for key, val in self.rois.items():
-                if key != 'type':
-                    pos, size = val.pos(), val.size()
-                    self.ch1_plot.removeItem(self.rois[key])
-                    # self.ch2_plot.removeItem(self.rois[key])
+                    if key != 'type':
+                        # get parameters of roi
+                        pos, size = val.pos(), val.size()
 
-                    if self.rois['type'] == "EB":
-                        self.rois[key] = pg.EllipseROI(pos, size, pen=(3, 9), movable=False, rotatable=False,
-                                                       resizable=False, scaleSnap=True, translateSnap=True)
-                        self.ch1_plot.addItem(self.rois[key])
-                        # self.ch2_plot.addItem(self.rois[key])
-                    elif self.rois['type'] == "PB":
-                        raise NotImplementedError
+                        # remove all rois from plot
+                        if key[-3:] == 'ch1':
+                            self.ch1_plot.removeItem(self.rois[key])
+                        elif key[-3:] == 'ch2':
+                            self.ch2_plot.removeItem(self.rois[key])
 
-            self._rois_locked = True
-            self._finalize_masks()
+                        # remake rois with same parameters but make them immutable
+                        if self.rois['type'] == "EB":
+                            self.rois[key] = pg.EllipseROI(pos, size, pen=(3, 9), movable=False, rotatable=False,
+                                                           resizable=False, scaleSnap=True, translateSnap=True)
+                            if key[-3:] == 'ch1':
+                                self.ch1_plot.addItem(self.rois[key])
+                            elif key[-3:] == 'ch2':
+                                self.ch2_plot.addItem(self.rois[key])
 
-            # Inactivate other buttons
-            self.loadEBROIsButton.setEnabled(False)
-            self.loadPBROIsButton.setEnabled(False)
-            self.clearROIsButton.setEnabled(False)
-        else:
-            self._rois_locked = False
+                        elif self.rois['type'] == "PB":
+                            raise NotImplementedError
 
-            for key, val in self.rois.items():
-                if key != 'type':
-                    pos, size = val.pos(), val.size()
-                    self.ch1_plot.removeItem(self.rois[key])
-                    # self.ch2_plot.removeItem(self.rois[key])
+                self._rois_locked = True
+                self._finalize_masks()
 
-                    if self.rois['type'] == "EB":
-                        self.rois[key] = pg.EllipseROI(pos, size, pen=(3, 9), scaleSnap=True, translateSnap=True)
-                        self.ch1_plot.addItem(self.rois[key])
-                        # self.ch2_plot.addItem(self.rois[key])
-                    elif self.rois['type'] == "PB":
-                        raise NotImplementedError
+                # Inactivate other buttons
+                self.loadEBROIsButton.setEnabled(False)
+                self.loadPBROIsButton.setEnabled(False)
+                self.clearROIsButton.setEnabled(False)
+            else:
+                self._rois_locked = False
 
-            # reactivate other buttons
-            self.loadEBROIsButton.setEnabled(True)
-            self.loadPBROIsButton.setEnabled(True)
-            self.clearROIsButton.setEnabled(True)
+                for key, val in self.rois.items():
+                    if key != 'type':
+                        pos, size = val.pos(), val.size()
+                        # remove all rois from plot
+                        if key[-3:] == 'ch1':
+                            self.ch1_plot.removeItem(self.rois[key])
+                        elif key[-3:] == 'ch2':
+                            self.ch2_plot.removeItem(self.rois[key])
 
-            self._stop_streaming()
+                        if self.rois['type'] == "EB":
+                            self.rois[key] = pg.EllipseROI(pos, size, pen=(3, 9), scaleSnap=True, translateSnap=True)
+                            if key[-3:] == 'ch1':
+                                self.ch1_plot.addItem(self.rois[key])
+                            elif key[-3:] == 'ch2':
+                                self.ch2_plot.addItem(self.rois[key])
+
+                        elif self.rois['type'] == "PB":
+                            raise NotImplementedError
+
+                # reactivate other buttons
+                self.loadEBROIsButton.setEnabled(True)
+                self.loadPBROIsButton.setEnabled(True)
+                self.clearROIsButton.setEnabled(True)
+
+                self._stop_streaming()
 
     def _finalize_masks(self):
-        # make masks
-        if self.rois is None:
-            pass
-            # raise warning
+        '''
+        make masks for fast calculation of bump phase and magnitude
+        :return:
+        '''
 
+        self._set_dummy_img()  # make sure dummy image is the right shape
+        if self.rois['type'] == 'EB':
+            # active pixel mask
+            bounding_slices, _donut_mask = self._make_donut_mask()
+
+            # get circular phase of each pixel, assuming origin in center of larger roi
+            _phase_mask = self.phase_calc(_donut_mask.shape[0], _donut_mask.shape[1])
+            _phase_mask *= _donut_mask
+
+            # embed masks in img shape extracted from PrairieView
+            donut_mask = 0. * self._dummy_img
+            donut_mask[bounding_slices[0], bounding_slices[1]] = _donut_mask
+
+            phase_mask = 0 * self._dummy_img
+            phase_mask[bounding_slices[0], bounding_slices[1]] = _phase_mask
+
+            # bin wedges
+            self.wedge_masks = np.zeros((*self._dummy_img.shape, self.wedge_resolution))
+            bin_edges = np.linspace(1E-5, 2 * np.pi, num=self.wedge_resolution + 1)
+
+            # make a mask for each wedge
+            self.wedge_centers = []
+            self.wedge_sizes = []
+            for itr, (ledge, redge) in enumerate(zip(bin_edges[:-1].tolist(), bin_edges[1:])):
+                tmp_mask = (donut_mask > 0) * (phase_mask >= ledge) * (phase_mask < redge)
+                self.wedge_masks[:, :, itr] = tmp_mask
+                # get average phase of mask
+                self.wedge_centers.append((ledge + redge) / 2.)
+                # number of active pixels in each mask
+                self.wedge_sizes.append(tmp_mask.ravel().sum())
+
+            self.wedge_centers = np.array(self.wedge_centers)
+            self.wedge_sizes = np.array(self.wedge_sizes)
+        elif self.rois['type'] == 'PB':
+            raise NotImplementedError
         else:
-            self._set_dummy_img()  # make sure dummy image is the right shape
-            if self.rois['type'] == 'EB':
-                # active pixel mask
-                bounding_slices, _donut_mask = self._make_donut_mask()
-                print('bounding slices', bounding_slices)
-
-                # get circular phase of each pixel, assuming origin in center of larger roi
-                _phase_mask = self.phase_calc(_donut_mask.shape[0], _donut_mask.shape[1])
-                _phase_mask *= _donut_mask
-
-                # embed masks in img shape extracted from PrairieView
-                donut_mask = 0.*self._dummy_img
-                print('sliced array shape', donut_mask[bounding_slices[0], bounding_slices[1]].shape)
-                #ToDo: make sure dimensions don't get screwed up when real image is present
-                donut_mask[bounding_slices[0], bounding_slices[1]] = _donut_mask
-
-                phase_mask = 0*self._dummy_img
-                phase_mask[bounding_slices[0], bounding_slices[1]] = _phase_mask
-
-                # bin wedges
-                self.wedge_masks = np.zeros((*self._dummy_img.shape, self.wedge_resolution))
-                bin_edges = np.linspace(1E-5, 2 * np.pi, num=self.wedge_resolution + 1)
-
-                self.wedge_centers = []
-                self.wedge_sizes = []
-                for itr, (ledge, redge) in enumerate(zip(bin_edges[:-1].tolist(), bin_edges[1:])):
-                    tmp_mask = (donut_mask > 0) * (phase_mask >= ledge) * (phase_mask < redge)
-                    self.wedge_masks[:, :, itr] = tmp_mask
-                    self.wedge_centers.append((ledge + redge) / 2.)
-                    self.wedge_sizes.append(tmp_mask.ravel().sum())
-
-                self.wedge_centers = np.array(self.wedge_centers)
-                self.wedge_sizes = np.array(self.wedge_sizes)
-                print('wedge size', self.wedge_sizes)
-            elif self.rois['type'] == 'PB':
-                raise NotImplementedError
-            else:
-                raise NotImplementedError
+            raise NotImplementedError
 
     def _make_donut_mask(self):
+        '''
+        make intermediate mask for EB rois
+        :return:
+        '''
 
-        bounding_slices = self.rois['outer ellipse'].getArraySlice(self._dummy_img, self.ch1_curr_image)[0]
+        # indices of bounding box for outer ellipse roi
+        bounding_slices = self.rois['outer ellipse ch1'].getArraySlice(self._dummy_img, self.ch1_curr_image)[0]
 
-        outer_mask = np.copy(self._dummy_img)[bounding_slices[0], bounding_slices[1]]
+        # _dummy_img is an array of ones
+        outer_mask = (0.*self._dummy_img)[bounding_slices[0], bounding_slices[1]]
         # fix the occasional 1 pixel error
-        _outer_mask = 1. * (self.rois['outer ellipse'].getArrayRegion(self._dummy_img, self.ch1_curr_image) > 0)
+        _outer_mask = 1. * (self.rois['outer ellipse ch1'].getArrayRegion(self._dummy_img, self.ch1_curr_image) > 0)
         outer_mask[:_outer_mask.shape[0], :_outer_mask.shape[1]] = _outer_mask
 
-        _inner_mask = 1. * (self.rois['inner ellipse'].getArrayRegion(self._dummy_img, self.ch1_curr_image) > 0)
-
-        inner_mask_rel_pos = (int(self.rois['inner ellipse'].pos()[1] - self.rois['outer ellipse'].pos()[1]),
-                              int(self.rois['inner ellipse'].pos()[0] - self.rois['outer ellipse'].pos()[0]))
+        _inner_mask = 1. * (self.rois['inner ellipse ch1'].getArrayRegion(self._dummy_img, self.ch1_curr_image) > 0)
+        # get where inner mask starts relative to outer one
+        inner_mask_rel_pos = (int(self.rois['inner ellipse ch1'].pos()[1] - self.rois['outer ellipse ch1'].pos()[1]),
+                              int(self.rois['inner ellipse ch1'].pos()[0] - self.rois['outer ellipse ch1'].pos()[0]))
 
         inner_mask = np.zeros(outer_mask.shape)
         inner_mask[inner_mask_rel_pos[0]:inner_mask_rel_pos[0] + _inner_mask.shape[0],
         inner_mask_rel_pos[1]:inner_mask_rel_pos[1] + _inner_mask.shape[1]] = _inner_mask
 
         donut_mask = 1. * ((outer_mask - inner_mask) > 1E-5)
-        print(donut_mask.shape)
         return bounding_slices, donut_mask
 
     @njit
     def phase_calc(self, nrows, ncols, center=None):
+        '''
+        Calculate phase of each pixel relative to center
+        :param nrows: number of rows in output matrix
+        :param ncols: number of columns in output matrix
+        :param center: center used to calculate phase. If None, assume it's the center of the output array
+        :return: phase_mat: [nrows, ncols] matrix of phase values (0,2*pi]
+        '''
         phase_mat = np.zeros([nrows, ncols])
 
         if center is None:
             center = (int(nrows / 2), int(ncols / 2))
 
         for row, col in itertools.product(range(nrows), range(ncols)):
+            # convert to phase (0-2*pi)
             phase_mat[row, col] = np.arctan2(col - center[1], row - center[0]) + np.pi + 1E-5
 
         return phase_mat
 
     def set_func_ch(self):
+        '''
+        set which signal is the calcium indicator, allocate buffers
+        :return:
+        '''
 
         if self.ch1FuncChanButton.isChecked():
             self._func_ch = 1
@@ -475,10 +569,14 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
         if self._func_ch is not None:
             if self._zbuffers[self._func_ch] is None:
-                self._set_dummy_img()
+                self._set_dummy_img() # update prairie link parameters
                 self._zbuffers[self._func_ch] = np.zeros((*self._dummy_img.shape, self._zstack_frames))
 
     def set_baseline_ch(self):
+        '''
+        set which signal is used for baseline calculation, allocate buffers
+        :return:
+        '''
 
         if self.ch1StaticChanButton.isChecked():
             self._baseline_ch = 1
@@ -489,7 +587,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
         if self._baseline_ch is not None:
             if self._zbuffers[self._baseline_ch] is None:
-                self._set_dummy_img()
+                self._set_dummy_img() # update prairie link parameters
                 self._zbuffers[self._baseline_ch] = np.zeros((*self._dummy_img.shape, self._zstack_frames))
 
     def set_streaming(self):
@@ -577,7 +675,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         if self.rois['type'] == 'EB':
             x, y = pol2cart(signal, self.wedge_centers)
             mag, phase = cart2pol(x.mean(), y.mean())
-            phase = (phase+2*np.pi)%(2.*np.pi)
+            phase = (phase + 2 * np.pi) % (2. * np.pi)
         elif self.rois['type'] == 'PB':
             mag, phase = None, None
             raise NotImplementedError
@@ -586,7 +684,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
         self._bump_signal[:, :-1] = self._bump_signal[:, 1:]
         self._bump_signal[:, -1] = signal
-        self._bump_mag[:-1] = self._bump_mag[ 1:]
+        self._bump_mag[:-1] = self._bump_mag[1:]
         self._bump_mag[-1] = mag
         self._bump_phase[:-1] = self._bump_phase[1:]
         self._bump_phase[-1] = phase
@@ -595,7 +693,8 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
     def _plot_bump(self):
         self.bump_heatmap.setImage(self._bump_signal)
-        self.bump_plot.setData(np.arange(0, self._bump_signal.shape[1]), self._bump_phase /2./np.pi*self.wedge_resolution)
+        self.bump_plot.setData(np.arange(0, self._bump_signal.shape[1]),
+                               self._bump_phase / 2. / np.pi * self.wedge_resolution)
 
     def _send_bump_2_VR(self):
         # ToDo: send info over serial port to teensy or directly to VR computer
@@ -624,8 +723,6 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         event.accept()
 
 
-
-
 def main():
     app = QApplication(sys.argv)
     widget = PLUI()
@@ -634,8 +731,5 @@ def main():
     sys.exit(r)
 
 
-
 if __name__ == '__main__':
     main()
-
-
