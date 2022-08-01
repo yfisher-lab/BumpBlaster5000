@@ -10,7 +10,7 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import QApplication
 import pyqtgraph as pg
 import serial
-from numba import njit
+from numba import jit
 
 import plugin_viewer
 from BumpBlaster5000.utils import pol2cart, cart2pol, threaded
@@ -90,7 +90,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.clearROIsButton.clicked.connect(self.clear_rois)
         self.roiLockCheckBox.stateChanged.connect(self.lock_rois)
         self._rois_locked = False
-        self._which_roi_moved = None
+
 
         # connect df/f(r) buttons
         self.ch1FuncChanButton.toggled.connect(self.set_func_ch)
@@ -216,6 +216,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
             self._zbuffers[1] = np.zeros((*self._dummy_img.shape, self._zstack_frames))
         else:
             self.ch1_active = False
+            self._zbuffers[1] = None
 
     def set_ch2_active(self):
         '''
@@ -230,6 +231,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
             self._zbuffers[2] = np.zeros((*self._dummy_img.shape, self._zstack_frames))
         else:
             self.ch2_active = False
+            self._zbuffers[2] = None
 
     def set_num_slices(self):
         '''
@@ -265,19 +267,32 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         :return:
         '''
 
-        # if ch1 data is needed
-        if self.ch1_active or self._func_ch == 1 or self._baseline_ch == 1:
-            self._zbuffers[1][:, :, :-1] = self._zbuffers[1][:, :, 1:]
-            self._zbuffers[1][:, :, -1] = self._get_channel_image(1)
-            # ToDo: mean vs max proj toggle in designer
-            self._zproj[1] = np.amax(self._zbuffers[1], axis=-1)
+        try:
+            # if ch1 data is needed
+            if self.ch1_active or self._func_ch == 1 or self._baseline_ch == 1:
+                self._zbuffers[1][:, :, :-1] = self._zbuffers[1][:, :, 1:]
+                self._zbuffers[1][:, :, -1] = self._get_channel_image(1)
+                # ToDo: mean vs max proj toggle in designer
+                self._zproj[1] = np.amax(self._zbuffers[1], axis=-1)
 
-        # if ch2 data is needed
-        if self.ch2_active or self._func_ch == 2 or self._baseline_ch == 2:
-            self._zbuffers[2][:, :, :-1] = self._zbuffers[2][:, :, 1:]
-            self._zbuffers[2][:, :, -1] = self._get_channel_image(2)
-            # ToDo: mean vs max proj toggle in designer
-            self._zproj[2] = np.amax(self._zbuffers[2], axis=-1)
+            # if ch2 data is needed
+            if self.ch2_active or self._func_ch == 2 or self._baseline_ch == 2:
+                self._zbuffers[2][:, :, :-1] = self._zbuffers[2][:, :, 1:]
+                self._zbuffers[2][:, :, -1] = self._get_channel_image(2)
+                # ToDo: mean vs max proj toggle in designer
+                self._zproj[2] = np.amax(self._zbuffers[2], axis=-1)
+
+        except ValueError:
+            # unexpected change in image shape
+            print("Unexpected change in image shape. Resetting all buttons and clearing ROIs")
+            self.streamDataCheckBox.setChecked(False)
+            self.roiLockCheckBox.setChecked(False)
+            self.clear_rois()
+            self.ch1ViewButton.setChecked(False)
+            self.ch2ViewButton.setChecked(False)
+            self._set_dummy_img()
+            self._get_frame_period()
+
 
         # set channel images
         self._set_channel_images()
@@ -329,8 +344,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
         # make sure roi locations and sizes are matched across channels
         for k, v in self.rois.items():
-            self._which_roi_moved = k
-            v.sigRegionChangeFinished.connect(self._EB_match_roi_pos)
+            v.sigRegionChangeFinished.connect(lambda: self._EB_match_roi_pos(k, v))
 
         self.ch1_plot.addItem(self.rois['outer ellipse ch1'])
         self.ch1_plot.addItem(self.rois['inner ellipse ch1'])
@@ -341,35 +355,32 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.loadEBROIsButton.setEnabled(False)
         self.loadPBROIsButton.setEnabled(False)
 
-    def _EB_match_roi_pos(self):
+    def _EB_match_roi_pos(self, name, roi):
         '''
         Ensure ROI locations mirror each other across channel views
         :return:
         '''
 
-        roi = self.rois[self._which_roi_moved]
-        # avoid infinite callbacks
-        self._which_roi_moved = "echo"
-        # wait to update until end of function to reduce number of callbacks
-        # setPos and setSize by default emit a sigRegionChangeFinished signal
-        if self._which_roi_moved == 'outer ellipse ch1':
-            roi.setPos(self.rois['outer ellipse ch1'].pos(), update=False)
-            roi.setSize(self.rois['outer ellipse ch1'].size(), update=False)
-        elif self._which_roi_moved == 'inner ellipse ch1':
-            roi.setPos(self.rois['inner ellipse ch1'].pos(), update=False)
-            roi.setSize(self.rois['inner ellipse ch1'].size(), update=False)
-        elif self._which_roi_moved == 'outer ellipse ch2':
-            roi.setPos(self.rois['outer ellipse ch2'].pos(), update=False)
-            roi.setSize(self.rois['outer ellipse ch2'].size(), update=False)
-        elif self._which_roi_moved == 'inner ellipse ch2':
-            roi.setPos(self.rois['outer ellipse ch1'].pos(), update=False)
-            roi.setSize(self.rois['outer ellipse ch1'].size(), update=False)
-        elif self._which_roi_moved == "echo":
-            pass
+        if name == 'outer ellipse ch1':
+            mirror_name = 'outer ellipse ch2'
+        elif name == 'outer ellipse ch2':
+            mirror_name = 'outer ellipse ch1'
+        elif name == 'inner ellipse ch1':
+            mirror_name = 'inner ellipse ch2'
+        elif name == 'inner ellipse ch2':
+            mirror_name = 'inner ellipse ch1'
         else:
-            raise Exception("wrong roi key")
+            raise Exception("wrong roi name")
 
-        roi.stateChanged()
+        mirror_roi = self.rois[mirror_name]
+
+        if roi.pos() != mirror_roi.pos():
+            mirror_roi.setPos(roi.pos(), finish=False)
+
+        if roi.size() != mirror_roi.size():
+            mirror_roi.setSize(roi.size(), finish=False)
+
+        mirror_roi.stateChanged()
 
     def load_PB_rois(self):
         raise NotImplementedError
@@ -534,7 +545,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         donut_mask = 1. * ((outer_mask - inner_mask) > 1E-5)
         return bounding_slices, donut_mask
 
-    @njit
+    @jit
     def phase_calc(self, nrows, ncols, center=None):
         '''
         Calculate phase of each pixel relative to center
@@ -591,6 +602,10 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
                 self._zbuffers[self._baseline_ch] = np.zeros((*self._dummy_img.shape, self._zstack_frames))
 
     def set_streaming(self):
+        '''
+        update streaming bool and start or stop streaming
+        :return:
+        '''
 
         if self.streamDataCheckBox.isChecked():
             self._stream_bump = True
@@ -601,11 +616,14 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
     def _start_streaming(self, baseline_time=60, func_time=.01, bump_signal_time=2):
         '''
-
+        begin streaming data
         :param baseline_time: buffer size in seconds
+        :param func_time: buffer size for numerator in seconds (check)
+        :param: bump_signal_time: size of bump data buffer in seconds
         :return:
         '''
 
+        # get size of buffers in samples based on parameters
         num_func_samples = int(np.maximum(func_time / self._zstack_period, 1))
         if self._baseline_ch == self._func_ch:
             num_baseline_samples = int(baseline_time / self._zstack_period)
@@ -614,28 +632,35 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         num_bump_samples = int(bump_signal_time / self._zstack_period)
 
         if self.rois['type'] == 'EB':
-            # start buffer for baseline
-            # num rois, baseline_time
+            # start buffers
+            # num rois x baseline_time
             self._baseline_data_buffer = np.nan * np.zeros([self.wedge_resolution, num_baseline_samples])
             self._func_data_buffer = np.nan * np.zeros([self.wedge_resolution, num_func_samples])
-            print('func buff size', self._func_data_buffer.shape)
             self._bump_signal = np.zeros((self.wedge_resolution, num_bump_samples))
             self._bump_phase = np.zeros((num_bump_samples,))
             self._bump_mag = np.zeros((num_bump_samples,))
+
         elif self.rois['type'] == 'PB':
             raise NotImplementedError
 
     def _update_bump(self):
+        '''
+        update bump calculation for each frame
+        :return:
+        '''
 
         if self._stream_bump:
             self._apply_roi_masks()
             self._calc_bump_phase()
             self._plot_bump()
-            self._send_bump_2_VR()
         else:
             return
 
     def _apply_roi_masks(self):
+        '''
+        apply roi masks and update data buffers
+        :return:
+        '''
 
         if self.rois['type'] == "EB":
             self._update_bump_buffers(self._apply_EB_masks())
@@ -644,18 +669,31 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         else:
             raise NotImplementedError
 
-    @njit
+    @jit
     def _apply_EB_masks(self):
+        '''
+        extract data from each wedge mask for EB rois
+        :return: mask_data: [dict] with key, value pair for each PMT. Value is a numpy array with mean for each mask
+        '''
+
+        # allocate
         mask_data = {1: None, 2: None}
+        # for each channel
         for ch, zproj in self._zproj.items():
             if zproj is not None:
+                # wedge_masks: pixels x pixels x num of masks
+                # zproj: pixels x pixels
                 num = np.squeeze(
                     (zproj[:, :, np.newaxis] * self.wedge_masks).sum(axis=0, keepdims=True).sum(axis=1, keepdims=True))
                 mask_data[ch] = num / self.wedge_sizes
-
         return mask_data
 
     def _update_bump_buffers(self, mask_data):
+        '''
+        update data buffers (first in last out)
+        :param mask_data:
+        :return:
+        '''
 
         self._baseline_data_buffer[:, :-1] = self._baseline_data_buffer[:, 1:]
         self._baseline_data_buffer[:, -1] = mask_data[self._baseline_ch]
@@ -664,23 +702,48 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self._func_data_buffer[:, -1] = mask_data[self._func_ch]
 
     @staticmethod
-    @njit
+    @jit
     def _signal(func_data, baseline_data):
+        '''
+        delta F/F
+        :param func_data:  [nrois x buffer size]
+        :param baseline_data:  [nrois x buffer size]
+        :return: df/f
+        '''
+
         return np.nanmean(func_data, axis=1) / np.nanpercentile(baseline_data + 1E-5, 5, axis=1)
 
     def _calc_bump_phase(self):
-
+        '''
+        calculate phase and magnitude of bump
+        :return:
+        '''
         signal = self._signal(self._func_data_buffer, self._baseline_data_buffer)
 
         if self.rois['type'] == 'EB':
-            x, y = pol2cart(signal, self.wedge_centers)
-            mag, phase = cart2pol(x.mean(), y.mean())
-            phase = (phase + 2 * np.pi) % (2. * np.pi)
+            x, y = pol2cart(signal, self.wedge_centers) # polar to cartesian
+            mag, phase = cart2pol(x.mean(), y.mean()) # mean and then convert back to polar
+            phase = (phase + 2 * np.pi) % (2. * np.pi) # shift phase to agree with plot
         elif self.rois['type'] == 'PB':
             mag, phase = None, None
             raise NotImplementedError
         else:
             mag, phase = None, None
+
+        # update bump buffers
+        self._update_bump_buffers(signal, mag, phase)
+
+        # send magnitude and phase to com port queue to be sent to VR computer
+        self._bump_queue.put(f"{mag}, {phase}\n")
+
+    def _update_bump_buffers(self, signal, mag, phase):
+        '''
+        update plotting buffers for bump plotting
+        :param signal: df/f
+        :param mag: bump magnitude
+        :param phase:bump phase
+        :return:
+        '''
 
         self._bump_signal[:, :-1] = self._bump_signal[:, 1:]
         self._bump_signal[:, -1] = signal
@@ -689,19 +752,22 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self._bump_phase[:-1] = self._bump_phase[1:]
         self._bump_phase[-1] = phase
 
-        self._bump_queue.put(f"{mag}, {phase}\n")
 
     def _plot_bump(self):
+        '''
+        update pyqtgraph objects for current data
+        :return:
+        '''
+
         self.bump_heatmap.setImage(self._bump_signal)
         self.bump_plot.setData(np.arange(0, self._bump_signal.shape[1]),
                                self._bump_phase / 2. / np.pi * self.wedge_resolution)
 
-    def _send_bump_2_VR(self):
-        # ToDo: send info over serial port to teensy or directly to VR computer
-        pass
-
     def _stop_streaming(self):
-
+        '''
+        reset data buffers
+        :return:
+        '''
         self._func_data_buffer = None
         self._baseline_data_buffer = None
 
@@ -710,16 +776,24 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self._bump_phase = None
 
     def closeEvent(self, event: QtGui.QCloseEvent):
+        '''
+        override QWidget method to kill other threads and disconnect from prairie link on closure
+        :param event: required input from QtWidget
+        :return:
+        '''
         # close serial ports
+        # ToDo: check that serial ports are actually clearing
 
         # disconnect from prairie link
         self.pl.Disconnect()
+        print(self.pl.Disconnected())
         self._pl_active.clear()
 
         # join threads
         self.teensy_srl_handle.join()
         self.bump_srl_handle.join()
 
+        # close
         event.accept()
 
 
