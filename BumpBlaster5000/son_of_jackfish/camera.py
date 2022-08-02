@@ -1,5 +1,6 @@
 import time
 import PyCapture2 as pycap
+# import PySpin as pycap
 import numpy as np
 
 

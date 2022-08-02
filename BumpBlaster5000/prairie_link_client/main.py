@@ -12,7 +12,7 @@ import pyqtgraph as pg
 import serial
 from numba import jit
 
-import plugin_viewer
+from . import plugin_viewer
 from BumpBlaster5000.utils import pol2cart, cart2pol, threaded
 from BumpBlaster5000 import params
 

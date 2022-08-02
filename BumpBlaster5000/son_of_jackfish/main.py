@@ -91,7 +91,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self._isreading_bump.set()
         self.bump_reader_thread = self._read_bump_data()
         # ToDo: make checkbox in designer for whether or not to plot bump data
-        self.plot_bump = True
+        self.plot_bump = False
 
 
         self.fly_orientation_preview.show()
@@ -119,9 +119,9 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.cam_timer.start(20)
 
         # TODO: put fictrac and phase offset plot on same timer
-        self.plot_update_timer = QtCore.QTiemr()
+        self.plot_update_timer = QtCore.QTimer()
         self.plot_update_timer.timeout.connect(self.update_plots)
-        self.fictrac_timer.start(20)
+        self.plot_update_timer.start(20)
 
         # self.fictrac_timer = QtCore.QTimer()
         # self.fictrac_timer.timeout.connect(self.fictrac_plotter)
@@ -234,7 +234,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
     def _read_bump_data(self):
 
         with serial.Serial(self._params['pl_widget_com'], baudrate=self._params['baudrate']) as srl:
-            while self._read_bump_evnt.is_set():
+            while self._isreading_bump.is_set():
                 while srl.inWaiting() > 0:
                     self._bump_queue.put(srl.readline().decode('UTF-8').rstrip())
 
