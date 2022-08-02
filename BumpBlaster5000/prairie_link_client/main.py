@@ -333,19 +333,23 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         :return:
         '''
         self.rois = {'type': 'EB',
+                     'inner ellipse ch2': pg.EllipseROI([70, 70], [10, 10], pen=(3, 9),
+                                                        rotatable=False, scaleSnap=True, translateSnap=True),
                      'outer ellipse ch1': pg.EllipseROI([50, 50], [50, 50], pen=(3, 9),
                                                         rotatable=False, scaleSnap=True, translateSnap=True),
                      'inner ellipse ch1': pg.EllipseROI([70, 70], [10, 10], pen=(3, 9),
                                                         rotatable=False, scaleSnap=True, translateSnap=True),
                      'outer ellipse ch2': pg.EllipseROI([50, 50], [50, 50], pen=(3, 9),
                                                         rotatable=False, scaleSnap=True, translateSnap=True),
-                     'inner ellipse ch2': pg.EllipseROI([70, 70], [10, 10], pen=(3, 9),
-                                                        rotatable=False, scaleSnap=True, translateSnap=True),
+
                      }
 
         # make sure roi locations and sizes are matched across channels
         for k, v in self.rois.items():
-            v.sigRegionChangeFinished.connect(lambda: self._EB_match_roi_pos(k, v))
+            if k != 'type':
+                print(k,v)
+                v.sigRegionChangeFinished.connect(lambda v: self._EB_match_roi_pos(list(self.rois.keys())[list(self.rois.values()).index(v)]))
+                # v.sigRegionChangeFinished.connect(lambda v: print(list(self.rois.keys())[list(self.rois.values()).index(v)]))
 
         self.ch1_plot.addItem(self.rois['outer ellipse ch1'])
         self.ch1_plot.addItem(self.rois['inner ellipse ch1'])
@@ -356,7 +360,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.loadEBROIsButton.setEnabled(False)
         self.loadPBROIsButton.setEnabled(False)
 
-    def _EB_match_roi_pos(self, name, roi):
+    def _EB_match_roi_pos(self, name):
         '''
         Ensure ROI locations mirror each other across channel views
         :return:
@@ -373,6 +377,8 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         else:
             raise Exception("wrong roi name")
 
+        print(name,mirror_name)
+        roi = self.rois[name]
         mirror_roi = self.rois[mirror_name]
 
         if roi.pos() != mirror_roi.pos():
@@ -381,7 +387,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         if roi.size() != mirror_roi.size():
             mirror_roi.setSize(roi.size(), finish=False)
 
-        mirror_roi.stateChanged()
+        # mirror_roi.stateChanged()
 
     def load_PB_rois(self):
         raise NotImplementedError
@@ -391,21 +397,23 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         remove rois
         :return:
         '''
+        if self.rois is not None:
+            if self.rois['type'] == 'EB':
+                self.ch1_plot.removeItem(self.rois['outer ellipse ch1'])
+                self.ch1_plot.removeItem(self.rois['inner ellipse ch1'])
 
-        if self.rois['type'] == 'EB':
-            self.ch1_plot.removeItem(self.rois['outer ellipse ch1'])
-            self.ch1_plot.removeItem(self.rois['inner ellipse ch1'])
-
-            self.ch2_plot.removeItem(self.rois['outer ellipse ch2'])
-            self.ch2_plot.removeItem(self.rois['inner ellipse ch2'])
+                self.ch2_plot.removeItem(self.rois['outer ellipse ch2'])
+                self.ch2_plot.removeItem(self.rois['inner ellipse ch2'])
 
 
-        elif self.rois['type'] == 'PB':
-            raise NotImplementedError
+            elif self.rois['type'] == 'PB':
+                raise NotImplementedError
 
-        self.rois = None
-        self.loadEBROIsButton.setEnabled(True)
-        self.loadPBROIsButton.setEnabled(True)
+            self.rois = None
+            self.loadEBROIsButton.setEnabled(True)
+            self.loadPBROIsButton.setEnabled(True)
+        else:
+            pass
 
     def lock_rois(self):
         '''
@@ -546,7 +554,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         donut_mask = 1. * ((outer_mask - inner_mask) > 1E-5)
         return bounding_slices, donut_mask
 
-    @jit
+
     def phase_calc(self, nrows, ncols, center=None):
         '''
         Calculate phase of each pixel relative to center
@@ -664,13 +672,13 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         '''
 
         if self.rois['type'] == "EB":
-            self._update_bump_buffers(self._apply_EB_masks())
+            self._update_fluor_buffers(self._apply_EB_masks())
         elif self.rois['type'] == 'PB':
             raise NotImplementedError
         else:
             raise NotImplementedError
 
-    @jit
+
     def _apply_EB_masks(self):
         '''
         extract data from each wedge mask for EB rois
@@ -689,7 +697,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
                 mask_data[ch] = num / self.wedge_sizes
         return mask_data
 
-    def _update_bump_buffers(self, mask_data):
+    def _update_fluor_buffers(self, mask_data):
         '''
         update data buffers (first in last out)
         :param mask_data:
@@ -703,7 +711,6 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self._func_data_buffer[:, -1] = mask_data[self._func_ch]
 
     @staticmethod
-    @jit
     def _signal(func_data, baseline_data):
         '''
         delta F/F
@@ -787,7 +794,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
         # disconnect from prairie link
         self.pl.Disconnect()
-        print(self.pl.Disconnected())
+        print(self.pl.Connected())
         self._pl_active.clear()
 
         # join threads
