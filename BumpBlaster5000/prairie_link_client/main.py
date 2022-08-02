@@ -14,12 +14,14 @@ from numba import jit
 
 import plugin_viewer
 from BumpBlaster5000.utils import pol2cart, cart2pol, threaded
+from BumpBlaster5000 import params
 
 
 class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
-    def __init__(self, parent=None, wedge_resolution=16):
+    def __init__(self, parent=None):
         super(PLUI, self).__init__(parent)
         self.setupUi(self)
+        self._params = params.PL_PC_PARAMS
 
         pg.setConfigOptions(imageAxisOrder='row-major', antialias=True)
 
@@ -81,7 +83,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
         # initialize rois
         self.rois = None
-        self.wedge_resolution = wedge_resolution  # number of rois for EB
+        self.wedge_resolution = self._params['wedge_resolution']  # number of rois for EB
         # connect roi control buttons
         self.loadEBROIsButton.clicked.connect(self.load_EB_rois)
         self.wedge_masks = None
@@ -129,7 +131,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.frame_timer.start(self._frame_period)
 
     @threaded
-    def continuous_read_teensy_pl_commands(self, teensy_com='COM12', baudrate=115200):
+    def continuous_read_teensy_pl_commands(self):
         '''
         open serial port from teensy and send commands straight to prairie link,
         undesired behavior if strings are not valid prairie link commands
@@ -138,7 +140,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         :return:
         '''
 
-        with serial.Serial(teensy_com, baudrate=baudrate) as srl:
+        with serial.Serial(self._params['teensy_com'], baudrate=self._params['baudrate']) as srl:
             while self._pl_active.is_set():
                 # read serial and send as commands to Prairie Link
                 # note this will block forever if commands aren't sent
@@ -153,9 +155,8 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         :param baudrate: baudrate
         :return:
         '''
-        # ToDo: make com port names and baudrates a parameter saved in a separate file
 
-        with serial.Serial(vr_com, baudrate=baudrate) as srl:
+        with serial.Serial(self._params['vr_com'], baudrate=self._params['baudrate']) as srl:
             while self._pl_active.is_set():  # while prairie link is active
                 try:
                     bump_data = self._bump_queue.get()
@@ -614,7 +615,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
             self._stream_bump = False
             self._stop_streaming()
 
-    def _start_streaming(self, baseline_time=60, func_time=.01, bump_signal_time=2):
+    def _start_streaming(self):
         '''
         begin streaming data
         :param baseline_time: buffer size in seconds
@@ -624,12 +625,12 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         '''
 
         # get size of buffers in samples based on parameters
-        num_func_samples = int(np.maximum(func_time / self._zstack_period, 1))
+        num_func_samples = int(np.maximum(self._params['func_time'] / self._zstack_period, 1))
         if self._baseline_ch == self._func_ch:
-            num_baseline_samples = int(baseline_time / self._zstack_period)
+            num_baseline_samples = int(self._params['baseline_time'] / self._zstack_period)
         else:
             num_baseline_samples = num_func_samples
-        num_bump_samples = int(bump_signal_time / self._zstack_period)
+        num_bump_samples = int(self._params['bump_signal_time'] / self._zstack_period)
 
         if self.rois['type'] == 'EB':
             # start buffers
