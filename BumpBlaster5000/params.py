@@ -1,7 +1,7 @@
 FT_PC_PARAMS = {
     'teensy_input_com': 'COM7',
     'teensy_output_com': 'COM9',
-    'pl_widget_com': 'COM11',
+    'pl_widget_com': 'COM13',
     'baudrate': 115200  # check that this will work
 }
 

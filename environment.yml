@@ -12,4 +12,5 @@ dependencies:
   - pywin32
   - python=3.6
   - numba
+  - pillow
 prefix: C:\Users\markp\anaconda3\envs\BumpBlaster
