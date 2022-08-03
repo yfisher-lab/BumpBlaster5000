@@ -12,7 +12,7 @@ import pyqtgraph as pg
 import serial
 from numba import jit
 
-from . import plugin_viewer
+from BumpBlaster5000.prairie_link_client import plugin_viewer
 from BumpBlaster5000.utils import pol2cart, cart2pol, threaded
 from BumpBlaster5000 import params
 
@@ -274,14 +274,14 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
                 self._zbuffers[1][:, :, :-1] = self._zbuffers[1][:, :, 1:]
                 self._zbuffers[1][:, :, -1] = self._get_channel_image(1)
                 # ToDo: mean vs max proj toggle in designer
-                self._zproj[1] = np.amax(self._zbuffers[1], axis=-1)
+                self._zproj[1] = np.mean(self._zbuffers[1], axis=-1)
 
             # if ch2 data is needed
             if self.ch2_active or self._func_ch == 2 or self._baseline_ch == 2:
                 self._zbuffers[2][:, :, :-1] = self._zbuffers[2][:, :, 1:]
                 self._zbuffers[2][:, :, -1] = self._get_channel_image(2)
                 # ToDo: mean vs max proj toggle in designer
-                self._zproj[2] = np.amax(self._zbuffers[2], axis=-1)
+                self._zproj[2] = np.mean(self._zbuffers[2], axis=-1)
 
         except ValueError:
             # unexpected change in image shape
