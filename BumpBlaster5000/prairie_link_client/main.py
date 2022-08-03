@@ -10,7 +10,6 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import QApplication
 import pyqtgraph as pg
 import serial
-from numba import jit
 
 from BumpBlaster5000.prairie_link_client import plugin_viewer
 from BumpBlaster5000.utils import pol2cart, cart2pol, threaded
