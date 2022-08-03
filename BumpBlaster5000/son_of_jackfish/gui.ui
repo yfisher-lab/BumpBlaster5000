@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1118</width>
-    <height>599</height>
+    <width>1158</width>
+    <height>661</height>
    </rect>
   </property>
   <property name="palette">
@@ -566,7 +566,7 @@
      <rect>
       <x>750</x>
       <y>540</y>
-      <width>140</width>
+      <width>161</width>
       <height>20</height>
      </rect>
     </property>
@@ -577,7 +577,7 @@
      </font>
     </property>
     <property name="text">
-     <string>Z-projection</string>
+     <string>Phase Offset History</string>
     </property>
    </widget>
    <widget class="QCheckBox" name="cam_view_toggle">
@@ -679,6 +679,19 @@
      <string>Animal orientation</string>
     </property>
    </widget>
+   <widget class="QCheckBox" name="checkBox">
+    <property name="geometry">
+     <rect>
+      <x>390</x>
+      <y>260</y>
+      <width>165</width>
+      <height>37</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Read Bump Data</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
  </widget>
@@ -686,12 +699,12 @@
   <customwidget>
    <class>ImageView</class>
    <extends>QGraphicsView</extends>
-   <header location="global">pyqtgraph</header>
+   <header>pyqtgraph</header>
   </customwidget>
   <customwidget>
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header location="global">pyqtgraph</header>
+   <header>pyqtgraph</header>
   </customwidget>
  </customwidgets>
  <resources/>

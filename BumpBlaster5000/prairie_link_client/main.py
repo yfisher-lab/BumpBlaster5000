@@ -349,7 +349,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
             if k != 'type':
                 print(k,v)
                 v.sigRegionChangeFinished.connect(lambda v: self._EB_match_roi_pos(list(self.rois.keys())[list(self.rois.values()).index(v)]))
-                # v.sigRegionChangeFinished.connect(lambda v: print(list(self.rois.keys())[list(self.rois.values()).index(v)]))
+
 
         self.ch1_plot.addItem(self.rois['outer ellipse ch1'])
         self.ch1_plot.addItem(self.rois['inner ellipse ch1'])
