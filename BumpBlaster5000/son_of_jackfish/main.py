@@ -158,7 +158,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.trigger_opto_push.setEnabled(False)
         self.stop_scan_push.setEnabled(True)
 
-
+        #ToDo: handle case of fictrac not running. Error df referenced before assignment
         print(self.ft_frames)
         print(df['frame counter'].iloc[0:10])
 
