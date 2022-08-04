@@ -133,6 +133,10 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         # self.phase_offset_timer.start(20)
 
     def start_scan(self):
+        '''
+
+        :return:
+        '''
 
         if self.ft_manager.ft_subprocess.open_evnt.is_set():
             # if save fictrac
@@ -147,6 +151,10 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.ft_frames = {'start': None, 'abort': None}
 
     def stop_scan(self):
+        '''
+
+        :return:
+        '''
         self.teensy_input_serial.write(b'2')  # see teensy_control.ino
         while self.ft_frames['abort'] is None:
             time.sleep(.01)
@@ -174,9 +182,17 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         df.to_csv(ft_file)
 
     def trigger_opto(self):
+        '''
+
+        :return:
+        '''
         self.teensy_input_serial.write(b'3')  # see teensy_control.ino
 
     def toggle_fictrac(self):
+        '''
+
+        :return:
+        '''
 
         if self.launch_fictrac_toggle.isChecked():
             self.ft_manager.open()
@@ -184,10 +200,18 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
             self.ft_manager.close()
 
     def toggle_cam_view(self):
+        '''
+
+        :return:
+        '''
         self.cam_view = self.cam_view_toggle.isChecked()
 
 
     def set_path(self):
+        '''
+
+        :return:
+        '''
 
         options = QFileDialog.Options()
         self.filepath = QFileDialog.getExistingDirectory(self, "Select save directory")
@@ -203,6 +227,10 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
     @threaded
     def continuous_read(self):
+        '''
+
+        :return:
+        '''
         try:
             srl = serial.Serial(self._params['teensy_output_com'], baudrate=self._params['baudrate'])
         except serial.SerialException:
@@ -232,6 +260,10 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
     @threaded
     def _read_bump_data(self):
+        '''
+
+        :return:
+        '''
 
         with serial.Serial(self._params['pl_widget_com'], baudrate=self._params['baudrate']) as srl:
             while self._isreading_bump.is_set():
@@ -247,6 +279,10 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.cam_curr_image.setImage(self.cam.get_frame())
 
     def update_plots(self):
+        '''
+
+        :return:
+        '''
 
         heading = self.fictrac_plotter()
         if self.plot_bump:
@@ -256,6 +292,10 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
             self.offset_plotter(heading, bump_phase)
 
     def fictrac_plotter(self):
+        '''
+
+        :return:
+        '''
 
         if self.ft_manager.ft_subprocess.open_evnt.is_set():
 
@@ -283,6 +323,10 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
 
     def bump_plotter(self):
+        '''
+
+        :return:
+        '''
 
         # read bump
         m = self._bump_queue.qsize()
@@ -302,9 +346,18 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
 
     def offset_plotter(self):
+        '''
+
+        :return:
+        '''
         self.phase_offset_plot.setData(self._phase_x,self.phase_offset_buffer)
 
     def closeEvent(self, event: QtGui.QCloseEvent):
+        '''
+
+        :param event:
+        :return:
+        '''
 
         # close fictrac
         if self.ft_manager.ft_subprocess.open_evnt.is_set():
