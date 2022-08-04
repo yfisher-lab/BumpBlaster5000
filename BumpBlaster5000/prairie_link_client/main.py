@@ -3,6 +3,7 @@ import queue
 import threading
 import sys
 import time
+import warnings
 
 import numpy as np
 import win32com.client
@@ -67,7 +68,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.ch1_plot.showAxis('left', False)
         self.ch1_plot.showAxis('bottom', False)
         # self.ch1_plot.setAspectLocked(lock=True, ratio=1)
-        # self.ch1_plot.invertY(True)
+        self.ch1_plot.invertY(True)
         # self.set_ch1_image()
 
         self.ch2_plot = self.ch2Viewer.getPlotItem()
@@ -77,7 +78,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.ch2_plot.showAxis('left', False)
         self.ch2_plot.showAxis('bottom', False)
         # self.ch2_plot.setAspectLocked(lock=True, ratio=1)
-        # self.ch2_plot.invertY(True)
+        self.ch2_plot.invertY(True)
         # self.set_ch2_image()
 
         # initialize rois
@@ -94,17 +95,23 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
 
         # connect df/f(r) buttons
-        self.ch1FuncChanButton.toggled.connect(self.set_func_ch)
-        self.ch2FuncChanButton.toggled.connect(self.set_func_ch)
         self._func_ch = None
         self._func_data_buffer = None
+        self.ch1FuncChanButton.toggled.connect(self.set_func_ch)
 
-        self.ch1StaticChanButton.toggled.connect(self.set_baseline_ch)
-        self.ch2StaticChanButton.toggled.connect(self.set_baseline_ch)
+        self.ch2FuncChanButton.toggled.connect(self.set_func_ch)
+        self.ch2FuncChanButton.setChecked(True)
+
         self._baseline_ch = None
         self._baseline_data_buffer = None
+        self.ch1StaticChanButton.toggled.connect(self.set_baseline_ch)
+
+        self.ch2StaticChanButton.toggled.connect(self.set_baseline_ch)
+        self.ch2StaticChanButton.setChecked(True)
+
 
         self.streamDataCheckBox.stateChanged.connect(self.set_streaming)
+        self.streamDataCheckBox.setCheckable(False)
         self._stream_bump = False
         self._bump_signal = None
         self._bump_mag = None
@@ -209,11 +216,12 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         '''
         if self.ch1ViewButton.isChecked():
             self.ch1_active = True
+            self._reinit_zbuffer(1)
             # update scan settings
-            self._set_dummy_img()
-            self._get_frame_period()
-            # allocate zstack buffer
-            self._zbuffers[1] = np.zeros((*self._dummy_img.shape, self._zstack_frames))
+            # self._set_dummy_img()
+            # self._get_frame_period()
+            # # allocate zstack buffer
+            # self._zbuffers[1] = np.zeros((*self._dummy_img.shape, self._zstack_frames))
         else:
             self.ch1_active = False
             self._zbuffers[1] = None
@@ -226,12 +234,24 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         '''
         if self.ch2ViewButton.isChecked():
             self.ch2_active = True
-            self._set_dummy_img()
-            self._get_frame_period()
-            self._zbuffers[2] = np.zeros((*self._dummy_img.shape, self._zstack_frames))
+            self._reinit_zbuffer(2)
+            # self._set_dummy_img()
+            # self._get_frame_period()
+            # self._zbuffers[2] = np.zeros((*self._dummy_img.shape, self._zstack_frames))
         else:
             self.ch2_active = False
             self._zbuffers[2] = None
+
+    def _reinit_zbuffer(self,ch):
+        '''
+        Initialize z buffers for plotting
+        :param ch: channel to initialize
+        :return:
+        '''
+        self._set_dummy_img()
+        self._get_frame_period()
+        self._zstack_period = self._frame_period * self._zstack_frames
+        self._zbuffers[ch]=np.zeros((*self._dummy_img.shape, self._zstack_frames))
 
     def set_num_slices(self):
         '''
@@ -258,8 +278,15 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
             self._zstack_frames = 1
 
         # update the timing information
-        self._get_frame_period()
-        self._zstack_period = self._frame_period * self._zstack_frames
+        if self.ch1_active:
+            self._reinit_zbuffer(1)
+
+        if self.ch2_active:
+            self._reinit_zbuffer(2)
+
+        # self._get_frame_period()
+        # self._zstack_period = self._frame_period * self._zstack_frames
+
 
     def frame_update(self):
         '''
@@ -269,14 +296,14 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
         try:
             # if ch1 data is needed
-            if self.ch1_active or self._func_ch == 1 or self._baseline_ch == 1:
+            if (self.ch1_active) or (self._stream_bump and (self._func_ch == 1 or self._baseline_ch == 1)):
                 self._zbuffers[1][:, :, :-1] = self._zbuffers[1][:, :, 1:]
                 self._zbuffers[1][:, :, -1] = self._get_channel_image(1)
                 # ToDo: mean vs max proj toggle in designer
                 self._zproj[1] = np.mean(self._zbuffers[1], axis=-1)
 
             # if ch2 data is needed
-            if self.ch2_active or self._func_ch == 2 or self._baseline_ch == 2:
+            if (self.ch2_active) or (self._stream_bump and (self._func_ch == 2 or self._baseline_ch == 2)):
                 self._zbuffers[2][:, :, :-1] = self._zbuffers[2][:, :, 1:]
                 self._zbuffers[2][:, :, -1] = self._get_channel_image(2)
                 # ToDo: mean vs max proj toggle in designer
@@ -453,6 +480,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
                 self.loadEBROIsButton.setEnabled(False)
                 self.loadPBROIsButton.setEnabled(False)
                 self.clearROIsButton.setEnabled(False)
+                self.streamDataCheckBox.setCheckable(True)
             else:
                 self._rois_locked = False
 
@@ -479,6 +507,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
                 self.loadEBROIsButton.setEnabled(True)
                 self.loadPBROIsButton.setEnabled(True)
                 self.clearROIsButton.setEnabled(True)
+                self.streamDataCheckBox.setCheckable(False)
 
                 self._stop_streaming()
 
@@ -533,18 +562,32 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         '''
 
         # indices of bounding box for outer ellipse roi
-        bounding_slices = self.rois['outer ellipse ch1'].getArraySlice(self._dummy_img, self.ch1_curr_image)[0]
 
+
+        if self.ch1_active:
+            outer_key, inner_key = 'outer ellipse ch1', 'inner ellipse ch1'
+            curr_image = self.ch1_curr_image
+
+        elif self.ch2_active:
+            outer_key, inner_key = 'outer ellipse ch2', 'inner ellipse ch2'
+            curr_image = self.ch2_curr_image
+
+        else:
+            warnings.warn("At least one channel must be set active to finalize ROIS. Assuming Ch2")
+            outer_key, inner_key = 'outer ellipse ch2', 'inner ellipse ch2'
+            curr_image = self.ch2_curr_image
+
+        bounding_slices = self.rois[outer_key].getArraySlice(self._dummy_img, curr_image)[0]
         # _dummy_img is an array of ones
         outer_mask = (0.*self._dummy_img)[bounding_slices[0], bounding_slices[1]]
         # fix the occasional 1 pixel error
-        _outer_mask = 1. * (self.rois['outer ellipse ch1'].getArrayRegion(self._dummy_img, self.ch1_curr_image) > 0)
+        _outer_mask = 1. * (self.rois[outer_key].getArrayRegion(self._dummy_img, curr_image) > 0)
         outer_mask[:_outer_mask.shape[0], :_outer_mask.shape[1]] = _outer_mask
 
-        _inner_mask = 1. * (self.rois['inner ellipse ch1'].getArrayRegion(self._dummy_img, self.ch1_curr_image) > 0)
+        _inner_mask = 1. * (self.rois[inner_key].getArrayRegion(self._dummy_img, curr_image) > 0)
         # get where inner mask starts relative to outer one
-        inner_mask_rel_pos = (int(self.rois['inner ellipse ch1'].pos()[1] - self.rois['outer ellipse ch1'].pos()[1]),
-                              int(self.rois['inner ellipse ch1'].pos()[0] - self.rois['outer ellipse ch1'].pos()[0]))
+        inner_mask_rel_pos = (int(self.rois[inner_key].pos()[1] - self.rois[outer_key].pos()[1]),
+                              int(self.rois[inner_key].pos()[0] - self.rois[outer_key].pos()[0]))
 
         inner_mask = np.zeros(outer_mask.shape)
         inner_mask[inner_mask_rel_pos[0]:inner_mask_rel_pos[0] + _inner_mask.shape[0],
