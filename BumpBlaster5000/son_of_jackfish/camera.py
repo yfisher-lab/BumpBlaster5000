@@ -12,7 +12,7 @@ class Flea3Cam:
 
         # open BUS and get camera
         self._bus = pycap.BusManager()
-        self._uid = self._bus.getCameraFromSerialNumber(params.PL_PC_PARAMS['flea3_serial'])
+        self._uid = self._bus.getCameraFromSerialNumber(params.FT_PC_PARAMS['flea3_serial'])
         self.cam = pycap.Camera()
         self.n_rows = None
         self.n_cols = None
