@@ -101,22 +101,22 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.phase_offset_buffer = np.zeros([1000,])
 
         # # TODO: add checkbox to enable preview of camera
-        # self.cam = Flea3Cam()
-        # self.cam.connect()
-        # self.cam.start()
-        # self.cam_prev_plot = self.cam_prev.getPlotItem()
-        # self.cam_curr_image = pg.ImageItem()
-        # self.cam_prev_plot.addItem(self.cam_curr_image)
-        # self.cam_prev_plot.showAxis('left', False)
-        # self.cam_prev_plot.showAxis('bottom', False)
-        # self.cam_prev_plot.setAspectLocked(lock=True, ratio=1)
-        # self.cam_prev_plot.invertY(True)
-        # self.cam_curr_image.setImage(self.cam.get_frame())
+        self.cam = Flea3Cam()
+        self.cam.connect()
+        self.cam.start()
+        self.cam_prev_plot = self.cam_prev.getPlotItem()
+        self.cam_curr_image = pg.ImageItem()
+        self.cam_prev_plot.addItem(self.cam_curr_image)
+        self.cam_prev_plot.showAxis('left', False)
+        self.cam_prev_plot.showAxis('bottom', False)
+        self.cam_prev_plot.setAspectLocked(lock=True, ratio=1)
+        self.cam_prev_plot.invertY(True)
+        self.cam_curr_image.setImage(self.cam.get_frame())
 
-        # # start timers for plot updating
-        # self.cam_timer = QtCore.QTimer()
-        # self.cam_timer.timeout.connect(self.cam_updater)
-        # self.cam_timer.start(10)
+        # start timers for plot updating
+        self.cam_timer = QtCore.QTimer()
+        self.cam_timer.timeout.connect(self.cam_updater)
+        self.cam_timer.start(10)
 
         # TODO: put fictrac and phase offset plot on same timer
         self.plot_update_timer = QtCore.QTimer()
