@@ -43,8 +43,9 @@ class FicTracLiveHeadingEstimate(ft_utils.FicTracSocketManager):
     def start_live_heading_estimate(self):
 
         while self.ft_subprocess.open_evnt.is_set():
-
-            line = self.read_ft_queue().get()
+            # print(self.ft_queue.qsize())
+            line = self.read_ft_queue()
+            # print(self.ft_queue.qsize())
             if line is not None:
                 x, y = pol2cart(float(line['speed'])+.02, float(line['heading']))
                 with self.data_lock:
@@ -57,6 +58,8 @@ class FicTracLiveHeadingEstimate(ft_utils.FicTracSocketManager):
                     speed, heading = cart2pol(self.heading_x,self.heading_y)
                     self.heading = heading
                     self.rot_vel = speed
+            else:
+                print("empty queue")
 
     def get_heading(self):
 
@@ -65,7 +68,7 @@ class FicTracLiveHeadingEstimate(ft_utils.FicTracSocketManager):
             self._heading_y = 0
             self._heading_x = 0
 
-            return self.heading_x, self.heading_y, self.heading, self.speed
+            return self.heading_x, self.heading_y, self.heading, self.rot_vel
 
 
 
@@ -131,7 +134,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         x, y, _, _ = self.ft_manager.get_heading()
         self.fly_orientation_plot.setData([0, x], [0, self.ft_manager.heading_y],
                                           pen=(200, 200, 200), symbolBrush=(255, 0, 0), symbolPen='w')
-        self.fly_orientation_plot.disableAutoRange()
+        self.fly_orientation_preview.disableAutoRange()
 
         #initialize bump data plot
         self.bump_plot = self.fly_orientation_preview.getPlotItem().plot()
@@ -151,27 +154,27 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.phase_offset_buffer = np.zeros([1000,])
 
         # # TODO: add checkbox to enable preview of camera
-        self.cam = Flea3Cam()
-        self.cam.connect()
-        self.cam.start()
-        self.cam_prev_plot = self.cam_prev.getPlotItem()
-        self.cam_curr_image = pg.ImageItem()
-        self.cam_prev_plot.addItem(self.cam_curr_image)
-        self.cam_prev_plot.showAxis('left', False)
-        self.cam_prev_plot.showAxis('bottom', False)
-        self.cam_prev_plot.setAspectLocked(lock=True, ratio=1)
-        self.cam_prev_plot.invertY(True)
-        self.cam_curr_image.setImage(self.cam.get_frame())
+        # self.cam = Flea3Cam()
+        # self.cam.connect()
+        # self.cam.start()
+        # self.cam_prev_plot = self.cam_prev.getPlotItem()
+        # self.cam_curr_image = pg.ImageItem()
+        # self.cam_prev_plot.addItem(self.cam_curr_image)
+        # self.cam_prev_plot.showAxis('left', False)
+        # self.cam_prev_plot.showAxis('bottom', False)
+        # self.cam_prev_plot.setAspectLocked(lock=True, ratio=1)
+        # self.cam_prev_plot.invertY(True)
+        # self.cam_curr_image.setImage(self.cam.get_frame())
 
         # start timers for plot updating
-        self.cam_timer = QtCore.QTimer()
-        self.cam_timer.timeout.connect(self.cam_updater)
-        self.cam_timer.start(10)
+        # self.cam_timer = QtCore.QTimer()
+        # self.cam_timer.timeout.connect(self.cam_updater)
+        # self.cam_timer.start(10)
 
         # TODO: put fictrac and phase offset plot on same timer
         self.plot_update_timer = QtCore.QTimer()
         self.plot_update_timer.timeout.connect(self.update_plots)
-        self.plot_update_timer.start()
+        self.plot_update_timer.start(5)
 
         # self.fictrac_timer = QtCore.QTimer()
         # self.fictrac_timer.timeout.connect(self.fictrac_plotter)
