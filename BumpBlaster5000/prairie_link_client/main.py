@@ -154,7 +154,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
                 self.pl.SendScriptCommands(srl.readline().decode('UTF-8').rstrip())
 
     @threaded
-    def write_bump_data_serial(self, vr_com='COM11', baudrate=115200):
+    def write_bump_data_serial(self):
         '''
         send bump phase and magnitude to VR computer over dedicated serial port
         :param vr_com: com port to VR computer
@@ -165,8 +165,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         with serial.Serial(self._params['vr_com'], baudrate=self._params['baudrate']) as srl:
             while self._pl_active.is_set():  # while prairie link is active
                 try:
-                    bump_data = self._bump_queue.get()
-                    srl.write(bump_data.encode('utf-8'))
+                    srl.write(self._bump_queue.get().encode('utf-8'))
                 except queue.Queue.Empty:
                     pass
 
@@ -217,11 +216,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         if self.ch1ViewButton.isChecked():
             self.ch1_active = True
             self._reinit_zbuffer(1)
-            # update scan settings
-            # self._set_dummy_img()
-            # self._get_frame_period()
-            # # allocate zstack buffer
-            # self._zbuffers[1] = np.zeros((*self._dummy_img.shape, self._zstack_frames))
+
         else:
             self.ch1_active = False
             self._zbuffers[1] = None
@@ -235,9 +230,6 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         if self.ch2ViewButton.isChecked():
             self.ch2_active = True
             self._reinit_zbuffer(2)
-            # self._set_dummy_img()
-            # self._get_frame_period()
-            # self._zbuffers[2] = np.zeros((*self._dummy_img.shape, self._zstack_frames))
         else:
             self.ch2_active = False
             self._zbuffers[2] = None
@@ -838,6 +830,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.pl.Disconnect()
         print(self.pl.Connected())
         self._pl_active.clear()
+        print(self._pl_active.is_set())
 
         # join threads
         self.teensy_srl_handle.join()
