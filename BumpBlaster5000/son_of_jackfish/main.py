@@ -17,60 +17,6 @@ from BumpBlaster5000.utils import threaded, cart2pol, pol2cart
 
 from BumpBlaster5000 import params
 
-class FicTracLiveHeadingEstimate(ft_utils.FicTracSocketManager):
-    def __init__(self, **kwargs):
-        super(FicTracLiveHeadingEstimate, self).__init__(**kwargs)
-
-        self._live_estimate_thread_handle = None
-
-        self.heading = 0
-        self.rot_vel = 0
-
-        self._m = 1
-        self._heading_x = 0
-        self._heading_y = 0
-
-        self.heading_x = 0
-        self.heading_y = 0
-        self.data_lock = threading.Lock()
-
-    def start_reading(self, fictrac_output_file=os.path.join(os.getcwd(), "fictrac_output.log")):
-
-        super(FicTracLiveHeadingEstimate, self).start_reading(fictrac_output_file=fictrac_output_file)
-        self._live_estimate_thread_handle = self.start_live_heading_estimate()
-
-    @threaded
-    def start_live_heading_estimate(self):
-
-        while self.ft_subprocess.open_evnt.is_set():
-            # print(self.ft_queue.qsize())
-            line = self.read_ft_queue()
-            # print(self.ft_queue.qsize())
-            if line is not None:
-                x, y = pol2cart(float(line['speed'])+.02, float(line['heading']))
-                with self.data_lock:
-                    self._m += 1
-                    self._heading_x += x
-                    self._heading_y += y
-
-                    self.heading_x = self._heading_x/self._m
-                    self.heading_y = self._heading_y/self._m
-                    speed, heading = cart2pol(self.heading_x,self.heading_y)
-                    self.heading = heading
-                    self.rot_vel = speed
-            else:
-                print("empty queue")
-
-    def get_heading(self):
-
-        with self.data_lock:
-            self._m = 0
-            self._heading_y = 0
-            self._heading_x = 0
-
-            return self.heading_x, self.heading_y, self.heading, self.rot_vel
-
-
 
 class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
     def __init__(self, parent=None):
@@ -89,7 +35,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.cam_view_toggle.stateChanged.connect(self.toggle_cam_view)
 
         ## fictrac
-        self.ft_manager = FicTracLiveHeadingEstimate()  # add arguments
+        self.ft_manager = ft_utils.FicTracSocketManager()  # add arguments
         self.ft_frames = None
         self.launch_fictrac_toggle.stateChanged.connect(self.toggle_fictrac)
 
@@ -111,11 +57,13 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self._isreading_teensy = threading.Event()
         self.teensy_read_queue = queue.Queue()
         self.teensy_read_handle = self.continuous_read()
-        while not self._isreading_teensy.is_set():
-            time.sleep(.01)
-        self.teensy_queue_eater_handle = self.consume_teensy_queue()
+        # while not self._isreading_teensy.is_set():
+        #     time.sleep(.01)
+        # self.teensy_queue_eater_handle = self.consume_queue()
 
         # initialize fly orientation plot
+        self.fly_theta = np.pi / 2.
+        self.fly_speed = 0.
         self.fly_orientation_pi = self.fly_orientation_preview.getPlotItem()  # look up usage of pyqtgraph
         self.fly_orientation_pi.showAxis('left', False)
         self.fly_orientation_pi.showAxis('bottom', False)
@@ -130,51 +78,50 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
             self.fly_orientation_preview.addItem(circle)
 
         # Transform to cartesian and plot
+        x = (self.fly_speed + .02) * np.cos(self.fly_theta)
+        y = (self.fly_speed + .02) * np.sin(self.fly_theta)
         self.fly_orientation_plot = self.fly_orientation_preview.getPlotItem().plot()  # look up usage of pyqtgraph
-        x, y, _, _ = self.ft_manager.get_heading()
-        self.fly_orientation_plot.setData([0, x], [0, self.ft_manager.heading_y],
-                                          pen=(200, 200, 200), symbolBrush=(255, 0, 0), symbolPen='w')
-        self.fly_orientation_preview.disableAutoRange()
+        self.fly_orientation_plot.setData([0, x], [0, y], pen=(200, 200, 200), symbolBrush=(255, 0, 0), symbolPen='w')
 
         #initialize bump data plot
-        self.bump_plot = self.fly_orientation_preview.getPlotItem().plot()
-        self.bump_data = {'phase': None, 'mag': None}
-        self._bump_queue = queue.Queue()
-        self._isreading_bump = threading.Event()
-        self._isreading_bump.set()
-        self.bump_reader_thread = self._read_bump_data()
+        # self.bump_plot = self.fly_orientation_preview.getPlotItem().plot()
+        # self.bump_data = {'phase': None, 'mag': None}
+        # self._bump_queue = queue.Queue()
+        # self._isreading_bump = threading.Event()
+        # self._isreading_bump.set()
+        # self.bump_reader_thread = self._read_bump_data()
         # ToDo: make checkbox in designer for whether or not to plot bump data
-        self.plot_bump = False
+        # self.plot_bump = False
 
 
         self.fly_orientation_preview.show()
 
-        # TODO: change this to phase offset history
-        self.phase_offset_plot = self.scan_z_proj_preview
-        self.phase_offset_buffer = np.zeros([1000,])
+        # # TODO: change this to phase offset history
+        # self.phase_offset_plot = self.scan_z_proj_preview
+        # self.phase_offset_buffer = np.zeros([1000,])
 
         # # TODO: add checkbox to enable preview of camera
-        # self.cam = Flea3Cam()
-        # self.cam.connect()
-        # self.cam.start()
-        # self.cam_prev_plot = self.cam_prev.getPlotItem()
-        # self.cam_curr_image = pg.ImageItem()
-        # self.cam_prev_plot.addItem(self.cam_curr_image)
-        # self.cam_prev_plot.showAxis('left', False)
-        # self.cam_prev_plot.showAxis('bottom', False)
-        # self.cam_prev_plot.setAspectLocked(lock=True, ratio=1)
-        # self.cam_prev_plot.invertY(True)
-        # self.cam_curr_image.setImage(self.cam.get_frame())
+        self.cam = Flea3Cam()
+        self.cam.connect()
+        self.cam.start()
+        self.cam_prev_plot = self.cam_prev.getPlotItem()
+        self.cam_curr_image = pg.ImageItem()
+        self.cam_prev_plot.addItem(self.cam_curr_image)
+        self.cam_prev_plot.showAxis('left', False)
+        self.cam_prev_plot.showAxis('bottom', False)
+        self.cam_prev_plot.setAspectLocked(lock=True, ratio=1)
+        self.cam_prev_plot.invertY(True)
+        self.cam_curr_image.setImage(self.cam.get_frame())
 
         # start timers for plot updating
-        # self.cam_timer = QtCore.QTimer()
-        # self.cam_timer.timeout.connect(self.cam_updater)
-        # self.cam_timer.start(10)
+        self.cam_timer = QtCore.QTimer()
+        self.cam_timer.timeout.connect(self.cam_updater)
+        self.cam_timer.start(10)
 
         # TODO: put fictrac and phase offset plot on same timer
         self.plot_update_timer = QtCore.QTimer()
         self.plot_update_timer.timeout.connect(self.update_plots)
-        self.plot_update_timer.start(5)
+        self.plot_update_timer.start()
 
         # self.fictrac_timer = QtCore.QTimer()
         # self.fictrac_timer.timeout.connect(self.fictrac_plotter)
@@ -251,9 +198,10 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
         if self.launch_fictrac_toggle.isChecked():
             self.ft_manager.open()
+            while not self.ft_manager.ft_subprocess.open_evnt.is_set():
+                time.sleep(.001)
 
             self.ft_manager.start_reading()
-            self.ft_manager.start_live_heading_estimate()
         else:
             self.ft_manager.close()
 
@@ -298,35 +246,38 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
         while self._isreading_teensy.is_set():
             while srl.inWaiting() > 0:
-                self.teensy_read_queue.put(srl.readline())
+                msg = srl.readline().decode('UTF-8').rstrip.split(',')
+                if msg[0] in set(('start', 'abort')):
+                    self.ft_frames[msg[0]] = int(msg[1])
+                # self.teensy_read_queue.put(srl.readline())
         srl.close()
 
-    @threaded
-    def consume_teensy_queue(self):
-        '''
+    # @threaded
+    # def consume_queue(self):
+    #     '''
 
-        :return:
-        '''
-        while self._isreading_teensy.is_set():
-            if self.teensy_read_queue.qsize() > 0:
-                msg = self.teensy_read_queue.get().decode('UTF-8').rstrip().split(',')
-                print(msg)
-                if msg[0] in set(("start", "abort")):
-                    self.ft_frames[msg[0]] = int(msg[1])
-                else:  # add functionality for other teensy ouputs here
-                    pass
+    #     :return:
+    #     '''
+    #     while self._isreading_teensy.is_set():
+    #         if self.teensy_read_queue.qsize() > 0:
+    #             msg = self.teensy_read_queue.get().decode('UTF-8').rstrip().split(',')
+    #             print(msg)
+    #             if msg[0] in set(("start", "abort")):
+    #                 self.ft_frames[msg[0]] = int(msg[1])
+    #             else:  # add functionality for other teensy ouputs here
+    #                 pass
 
-    @threaded
-    def _read_bump_data(self):
-        '''
+    # @threaded
+    # def _read_bump_data(self):
+    #     '''
 
-        :return:
-        '''
+    #     :return:
+    #     '''
 
-        with serial.Serial(self._params['pl_widget_com'], baudrate=self._params['baudrate']) as srl:
-            while self._isreading_bump.is_set():
-                while srl.inWaiting() > 0:
-                    self._bump_queue.put(srl.readline().decode('UTF-8').rstrip())
+    #     with serial.Serial(self._params['pl_widget_com'], baudrate=self._params['baudrate']) as srl:
+    #         while self._isreading_bump.is_set():
+    #             while srl.inWaiting() > 0:
+    #                 self._bump_queue.put(srl.readline().decode('UTF-8').rstrip())
 
     def cam_updater(self):
         '''
@@ -343,12 +294,11 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         '''
 
         heading = self.fictrac_plotter()
-        if self.plot_bump:
-            bump_phase = self.bump_plotter()
-            self.phase_offset_buffer[:-1] = self.phase_offset_buffer[1:]
-            self.phase_offset_buffer[-1] = heading-bump_phase
-            self.offset_plotter(heading, bump_phase)
-
+        # if self.plot_bump:
+        #     bump_phase = self.bump_plotter()
+        #     self.phase_offset_buffer[:-1] = self.phase_offset_buffer[1:]
+        #     self.phase_offset_buffer[-1] = heading-bump_phase
+        #     self.offset_plotter(heading, bump_phase)
 
     def fictrac_plotter(self):
         '''
@@ -356,33 +306,52 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         :return:
         '''
 
-        x, y, heading, _ = self.ft_manager.get_heading()
-        self.fly_orientation_plot.setData(np.array([0, self.ft_manager.heading_x]),
-                                          np.array([0, self.ft_manager.heading_y]))
-        return heading
+        if self.ft_manager.ft_subprocess.open_evnt.is_set():
 
+            m = self.ft_manager.ft_queue.qsize()
+            if m > 0:
 
-    def bump_plotter(self):
-        '''
+                x, y, speed = 0, 0, 0
+                for _ in range(m):
+                    line = self.ft_manager.ft_queue.get()
+                    heading = float(line['heading'])
+                    speed += float(line['speed'])
+                    x += np.cos(heading)
+                    y += np.sin(heading)
 
-        :return:
-        '''
-
-        # read bump
-        m = self._bump_queue.qsize()
-        if m > 0:
-            phase, mag = [], []
-            for i in range(m):
-                _phase, _mag = self._bump_queue.get().split(',')
-                phase.append(_phase)
-                mag.append(_mag)
-            _x , _y = pol2cart(mag,phase)
-            x = _x.mean()
-            y = _y.mean()
-            self.bump_plot.setData([0, x], [0, y])
-            return cart2pol(x, y)[1]
+                x /= m
+                y /= m
+                speed /= m
+                self.fly_orientation_plot.setData((speed + .02) * np.array([0, x]), (speed + .02) * np.array([0, y]))
+                # self.fly_orientation_preview.show()
+                return None #cart2pol(x,y)[1]
+            else:
+                return None
         else:
             return None
+
+
+    # def bump_plotter(self):
+    #     '''
+
+    #     :return:
+    #     '''
+
+    #     # read bump
+    #     m = self._bump_queue.qsize()
+    #     if m > 0:
+    #         phase, mag = [], []
+    #         for i in range(m):
+    #             _phase, _mag = self._bump_queue.get().split(',')
+    #             phase.append(_phase)
+    #             mag.append(_mag)
+    #         _x , _y = pol2cart(mag,phase)
+    #         x = _x.mean()
+    #         y = _y.mean()
+    #         self.bump_plot.setData([0, x], [0, y])
+    #         return cart2pol(x, y)[1]
+    #     else:
+    #         return None
 
 
     def offset_plotter(self):
@@ -408,7 +377,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self._isreading_teensy.clear()
 
         # clear events for reading bump phase
-        self._read_bump_event.clear()
+        # self._read_bump_event.clear()
 
         # join serial threads
         self.teensy_read_handle.join()
