@@ -20,6 +20,8 @@ Adafruit_MCP4725 y_dac;
 const int max_dac_val = 4095; // 0-4095 => <0-3.3 V>, change if you change pwm_resolution
 const byte ft_num_cols = 26; 
 const byte ft_dropped_frame_pin = 9; // still need to check
+const byte heading_pwm_pin =3;
+const int max_pwm_val = 256;
 
 //Bruker Triggers
 const byte bk_scan_trig_pin = 35;
@@ -63,6 +65,10 @@ void setup() {
   heading_dac.begin(0x62,&Wire);
   x_dac.begin(0x62,&Wire1);
   y_dac.begin(0x63,&Wire1);
+  analogWriteResolution(8);
+  analogWriteFrequency(3,585937.5);
+  analogWrite(heading_pwm_pin, 128);
+//  pinMode(heading_pwm_pin, OUTPUT);
 
   // Bruker setup
   pinMode(bk_scan_trig_pin, OUTPUT);
@@ -163,7 +169,11 @@ void ft_state_machine() {
 //      
       // update heading pin
       heading_dac.setVoltage(int(max_dac_val * atof(_ft_chars) / (2 * PI)),false);
+      analogWrite(heading_pwm_pin, int(max_pwm_val * atof(_ft_chars) / (2 * PI)));
+//      SerialUSB2.println(_ft_chars);
 //      analogWrite(ft_heading_pin, int(max_pwm_val * atof(_ft_chars) / (2 * PI)));
+
+      
       break;
     
     case 12: // x
