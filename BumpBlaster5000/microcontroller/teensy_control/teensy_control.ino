@@ -7,45 +7,37 @@ int ft_index=0;
 double ft_heading;
 float ft_x;
 float ft_y;
-const byte ft_frame_pin = 2;
+
+const byte ft_frame_pin = 2; // update pin value
 
 int ft_current_frame = 0;
 
 #include <Wire.h>
 #include <Adafruit_MCP4725.h>
-// include <Adafruit_IO.h>
 Adafruit_MCP4725 heading_dac;
 Adafruit_MCP4725 x_dac;
 Adafruit_MCP4725 y_dac;
-const int max_dac_val = 4095; // 0-4095 => <0-3.3 V>, change if you change pwm_resolution
+Adafruit_MCP4725 index_dac;
+const int max_dac_val = 4095; // 4096 - 12-bit resolution
 const byte ft_num_cols = 26; 
-const byte ft_dropped_frame_pin = 9; // still need to check
+const byte ft_dropped_frame_pin = 24; // update pin value
 
 //Bruker Triggers
-const byte bk_scan_trig_pin = 35;
+const byte bk_scan_trig_pin = 3; // update pin value
 bool bk_scan_trig_state = false;
 bool bk_isscanning = false;
 int bk_scan_trig_timestamp;
 
-const byte bk_opto_trig_pin = 34;
+const byte bk_opto_trig_pin = 26; // update pin value
 bool bk_opto_trig_state = false;
 int bk_opto_trig_timestamp;
 const int bk_trig_timeout = 10;
 
-#define BKSERIAL Serial7
-//Serial7.setTX(28);
-//Serial7.setRX(29);
-// rx3 15
-// tx3 14
-
-const byte cam_trig_pin = 41;
-int cam_pin_val;
+#define BKSERIAL Serial7 // update to current pin settings
 
 
-
-
-
-// change FT pin to toggle each frame to that pin has time to get high
+//const byte cam_trig_pin = 41; // update pin value - may not be used
+//int cam_pin_val;
 
 
 void setup() {
@@ -61,8 +53,10 @@ void setup() {
 
   // start DACs
   heading_dac.begin(0x62,&Wire);
-  x_dac.begin(0x62,&Wire1);
-  y_dac.begin(0x63,&Wire1);
+  x_dac.begin(0x63,&Wire);
+  y_dac.begin(0x62,&Wire1);
+//  4th dac available for additional output
+  index_dac.begin(0x63, &Wire1);
 
   // Bruker setup
   pinMode(bk_scan_trig_pin, OUTPUT);
@@ -74,7 +68,7 @@ void setup() {
   bk_opto_trig_timestamp = millis();
 
   // camera trig
-  pinMode(cam_trig_pin,INPUT);
+//  pinMode(cam_trig_pin,INPUT);
 
   BKSERIAL.begin(115200);
   
@@ -120,7 +114,8 @@ void recv_ft_data() { // receive Fictrack data
           if (rc == endline) { // check to make sure this works, checks that columns are being counted correctly
             int _ft_index = ft_index + 1;
             if (_ft_index != (ft_num_cols )) {
-              digitalToggle(ft_dropped_frame_pin);
+              
+//              digitalToggle(ft_dropped_frame_pin);
 //            ft_index = ft_num_cols-1;
             }
           }
@@ -137,9 +132,6 @@ void recv_ft_data() { // receive Fictrack data
 }
 
 void ft_state_machine() {
-
-  
-  
 
   // switch case statement for variables of interest
   switch (ft_index) {
@@ -163,17 +155,14 @@ void ft_state_machine() {
 //      
       // update heading pin
       heading_dac.setVoltage(int(max_dac_val * atof(_ft_chars) / (2 * PI)),false);
-//      analogWrite(ft_heading_pin, int(max_pwm_val * atof(_ft_chars) / (2 * PI)));
       break;
     
     case 12: // x
       x_dac.setVoltage(int(max_dac_val * (atof(_ft_chars) + PI) / (2 * PI)),false);
-//      analogWrite(ft_x_pin, int(max_pwm_val * (atof(_ft_chars)+PI) / (2 * PI))); 
       break;
 
     case 13: // y
       y_dac.setVoltage(int(max_dac_val * (atof(_ft_chars) + PI) / (2 * PI)),false);
-//      analogWrite(ft_y_pin, int(max_pwm_val * (atof(_ft_chars)+PI) / (2 * PI))); 
       break;
 
 //    case 20: // x
@@ -216,14 +205,16 @@ void ft_state_machine() {
 
 void bk_state() {
   int _cmd = 0;
+  int _val = 0;
   if (SerialUSB1.available() >0) {
     _cmd = SerialUSB1.parseInt();
+    _val = SerialUSB1.parseInt();
   }
-  bk_state_machine(_cmd);
+  bk_state_machine(_cmd, _val);
     
 }
 
-void bk_state_machine(int cmd) {
+void bk_state_machine(int cmd, int val) {
 
   
   
@@ -266,6 +257,9 @@ void bk_state_machine(int cmd) {
       SerialUSB2.print(ft_current_frame);
       SerialUSB2.print('\n');
       break;
+
+    case 4: // set index_dac value 
+      index_dac.setVoltage(val,false);
 
 
   }
