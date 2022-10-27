@@ -20,7 +20,7 @@ Adafruit_MCP4725 y_dac;
 Adafruit_MCP4725 index_dac;
 const int max_dac_val = 4095; // 4096 - 12-bit resolution
 const byte ft_num_cols = 26; 
-const byte ft_dropped_frame_pin = 24; // update pin value
+const byte ft_dropped_frame_pin = 5; // update pin value
 
 //Bruker Triggers
 const byte bk_scan_trig_pin = 3; // update pin value
@@ -28,12 +28,12 @@ bool bk_scan_trig_state = false;
 bool bk_isscanning = false;
 int bk_scan_trig_timestamp;
 
-const byte bk_opto_trig_pin = 26; // update pin value
+const byte bk_opto_trig_pin = 4; // update pin value
 bool bk_opto_trig_state = false;
 int bk_opto_trig_timestamp;
 const int bk_trig_timeout = 10;
 
-#define BKSERIAL Serial7 // update to current pin settings
+#define BKSERIAL Serial6 // update to current pin settings
 
 
 //const byte cam_trig_pin = 41; // update pin value - may not be used
