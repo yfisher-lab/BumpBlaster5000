@@ -1,16 +1,20 @@
 import os
 import socket
 import warnings
-
 import select
 import subprocess
 import threading
 import queue
-from BumpBlaster5000.utils import threaded
+import multiprocessing as mp
 from glob import glob
 import time
 
 import pandas as pd
+
+from BumpBlaster5000.utils import threaded
+
+
+
 
 FICTRAC_PATH = r'C:\Users\fisherlab\Documents\FicTrac211\fictrac.exe'
 CONFIG_PATH = r'C:\Users\fisherlab\Documents\FicTrac211\config.txt'
@@ -54,7 +58,7 @@ class FicTracSocketManager:
     """
 
     def __init__(self, fictrac_path=FICTRAC_PATH, config_file=CONFIG_PATH, host='127.0.0.1', port=65413,
-                 columns_to_read={'heading': 17, 'integrated x': 20, 'integrated y': 21, 'speed': 19},
+                 columns_to_read=None, multiprocess_queue=True,
                  ):
         """
 
@@ -65,6 +69,8 @@ class FicTracSocketManager:
         :param columns_to_read:
         """
 
+        if columns_to_read is None:
+            columns_to_read = {'heading': 17, 'integrated x': 20, 'integrated y': 21, 'speed': 19}
         self.ft_subprocess = FicTracSubProcess(fictrac_path=fictrac_path,
                                                config_file=config_file)
 
@@ -81,7 +87,10 @@ class FicTracSocketManager:
         self.ft_buffer = ""
         self.ft_output_path = None
         self._ft_output_handle = None
-        self.ft_queue = queue.Queue()
+        if multiprocess_queue: # deal with threading vs multiprocessing
+            self.ft_queue = mp.SimpleQueue()
+        else:
+            self.ft_queue = queue.SimpleQueue()
         self.columns_to_read = columns_to_read
 
         # start read thread
