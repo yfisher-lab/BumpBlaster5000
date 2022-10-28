@@ -33,6 +33,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
         ## camera preview
         self.cam_view_toggle.stateChanged.connect(self.toggle_cam_view)
+        self.cam_view = False
 
         ## fictrac
         self.ft_manager = ft_utils.FicTracSocketManager()  # add arguments
@@ -57,9 +58,9 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self._isreading_teensy = threading.Event()
         self.teensy_read_queue = queue.Queue()
         self.teensy_read_handle = self.continuous_read()
-        # while not self._isreading_teensy.is_set():
-        #     time.sleep(.01)
-        # self.teensy_queue_eater_handle = self.consume_queue()
+        while not self._isreading_teensy.is_set():
+            time.sleep(.01)
+        self.teensy_queue_eater_handle = self.consume_queue()
 
         # initialize fly orientation plot
         self.fly_theta = np.pi / 2.
@@ -82,55 +83,12 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         y = (self.fly_speed + .02) * np.sin(self.fly_theta)
         self.fly_orientation_plot = self.fly_orientation_preview.getPlotItem().plot()  # look up usage of pyqtgraph
         self.fly_orientation_plot.setData([0, x], [0, y], pen=(200, 200, 200), symbolBrush=(255, 0, 0), symbolPen='w')
-
-        #initialize bump data plot
-        # self.bump_plot = self.fly_orientation_preview.getPlotItem().plot()
-        # self.bump_data = {'phase': None, 'mag': None}
-        # self._bump_queue = queue.Queue()
-        # self._isreading_bump = threading.Event()
-        # self._isreading_bump.set()
-        # self.bump_reader_thread = self._read_bump_data()
-        # ToDo: make checkbox in designer for whether or not to plot bump data
-        # self.plot_bump = False
-
-
         self.fly_orientation_preview.show()
 
-        # # TODO: change this to phase offset history
-        # self.phase_offset_plot = self.scan_z_proj_preview
-        # self.phase_offset_buffer = np.zeros([1000,])
-
-        # # TODO: add checkbox to enable preview of camera
-        # self.cam = Flea3Cam()
-        # self.cam.connect()
-        # self.cam.start()
-        # self.cam_prev_plot = self.cam_prev.getPlotItem()
-        # self.cam_curr_image = pg.ImageItem()
-        # self.cam_prev_plot.addItem(self.cam_curr_image)
-        # self.cam_prev_plot.showAxis('left', False)
-        # self.cam_prev_plot.showAxis('bottom', False)
-        # self.cam_prev_plot.setAspectLocked(lock=True, ratio=1)
-        # self.cam_prev_plot.invertY(True)
-        # self.cam_curr_image.setImage(self.cam.get_frame())
-
-        # start timers for plot updating
-        # self.cam_timer = QtCore.QTimer()
-        # self.cam_timer.timeout.connect(self.cam_updater)
-        # self.cam_timer.start(10)
-
-        # # TODO: put fictrac and phase offset plot on same timer
-        # self.plot_update_timer = QtCore.QTimer()
-        # self.plot_update_timer.timeout.connect(self.update_plots)
-        # self.plot_update_timer.start()
-
-        # self.fictrac_timer = QtCore.QTimer()
-        # self.fictrac_timer.timeout.connect(self.fictrac_plotter)
-        # self.fictrac_timer.start(5)
-        #
-        # # TODO: start offset plotter timer
-        # self.phase_offset_timer = QtCore.QTimer()
-        # self.phase_offset_timer.timeout.connect(self.phase_offset_plotter)
-        # self.phase_offset_timer.start(20)
+        # TODO: put fictrac and phase offset plot on same timer
+        self.plot_update_timer = QtCore.QTimer()
+        self.plot_update_timer.timeout.connect(self.update_plots)
+        self.plot_update_timer.start()
 
     def start_scan(self):
         '''
@@ -143,7 +101,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         #     # set filenames
         #     self.ft_manager.start_reading()
 
-        self.teensy_input_serial.write(b'1')  # see teensy_control.ino
+        self.teensy_input_serial.write(b'1,0\n')  # see teensy_control.ino
         self.start_scan_push.setEnabled(False)
         self.trigger_opto_push.setEnabled(True)
         self.stop_scan_push.setEnabled(True)
@@ -157,7 +115,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
         :return:
         '''
-        self.teensy_input_serial.write(b'2')  # see teensy_control.ino
+        self.teensy_input_serial.write(b'2,0\n')  # see teensy_control.ino
         while self.ft_frames['abort'] is None:
             time.sleep(.01)
 
@@ -188,7 +146,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
         :return:
         '''
-        self.teensy_input_serial.write(b'3')  # see teensy_control.ino
+        self.teensy_input_serial.write(b'3,0\n')  # see teensy_control.ino
 
     def toggle_fictrac(self):
         '''
@@ -211,6 +169,30 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         :return:
         '''
         self.cam_view = self.cam_view_toggle.isChecked()
+        
+        if self.cam_view:
+            # TODO: add checkbox to enable preview of camera
+            self.cam = Flea3Cam()
+            self.cam.connect()
+            self.cam.start()
+            self.cam_prev_plot = self.cam_prev.getPlotItem()
+            self.cam_curr_image = pg.ImageItem()
+            self.cam_prev_plot.addItem(self.cam_curr_image)
+            self.cam_prev_plot.showAxis('left', False)
+            self.cam_prev_plot.showAxis('bottom', False)
+            self.cam_prev_plot.setAspectLocked(lock=True, ratio=1)
+            self.cam_prev_plot.invertY(True)
+            self.cam_curr_image.setImage(self.cam.get_frame())
+
+            # start timers for plot updating
+            self.cam_timer = QtCore.QTimer()
+            self.cam_timer.timeout.connect(self.cam_updater)
+            self.cam_timer.start(10)
+        else:
+            self.cam_timer.stop()
+            # close cameras
+            self.cam.stop()
+        
 
 
     def set_path(self):
@@ -252,20 +234,6 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
                 # self.teensy_read_queue.put(srl.readline())
         srl.close()
 
-    # @threaded
-    # def consume_queue(self):
-    #     '''
-
-    #     :return:
-    #     '''
-    #     while self._isreading_teensy.is_set():
-    #         if self.teensy_read_queue.qsize() > 0:
-    #             msg = self.teensy_read_queue.get().decode('UTF-8').rstrip().split(',')
-    #             print(msg)
-    #             if msg[0] in set(("start", "abort")):
-    #                 self.ft_frames[msg[0]] = int(msg[1])
-    #             else:  # add functionality for other teensy ouputs here
-    #                 pass
 
     # @threaded
     # def _read_bump_data(self):

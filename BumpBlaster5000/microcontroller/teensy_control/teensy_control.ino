@@ -1,5 +1,13 @@
-// FicTrac reading variables
+// State reading variables
 const int num_chars = 256;
+char state_chars[num_chars];
+char _state_chars[num_chars];
+bool new_state = false;
+int state_index = 0;
+const int state_num_vals = 2;
+bool closed_loop = true;
+
+// FicTrac reading variables
 char ft_chars[num_chars];
 char _ft_chars[num_chars];
 boolean ft_new_data = false;
@@ -20,15 +28,15 @@ Adafruit_MCP4725 y_dac;
 Adafruit_MCP4725 index_dac;
 const int max_dac_val = 4095; // 4096 - 12-bit resolution
 const byte ft_num_cols = 26; 
-const byte ft_dropped_frame_pin = 5; // update pin value
+const byte ft_dropped_frame_pin = 5; 
 
 //Bruker Triggers
-const byte bk_scan_trig_pin = 3; // update pin value
+const byte bk_scan_trig_pin = 3; 
 bool bk_scan_trig_state = false;
 bool bk_isscanning = false;
 int bk_scan_trig_timestamp;
 
-const byte bk_opto_trig_pin = 4; // update pin value
+const byte bk_opto_trig_pin = 4; 
 bool bk_opto_trig_state = false;
 int bk_opto_trig_timestamp;
 const int bk_trig_timeout = 10;
@@ -80,10 +88,135 @@ void setup() {
 void yield() {} // get rid of hidden arduino yield function
 
 FASTRUN void loop() { // FASTRUN teensy keyword
-
+    state_machine();
     ft_state();
-    bk_state();
 }
+
+void state_machine() {
+  static int cmd = 0;
+  static int val = 0;
+
+  recv_state_data();
+  if (new_state) {
+    strcpy(_state_chars,state_chars);
+    if (state_index==0) {
+      cmd = atoi(_state_chars)
+    } 
+    else if (state_index == 1) {
+      val = atoi(_state_chars)
+    }
+    execute_state(cmd,val)
+    state_index = (state_index+1) % state_num_vals;
+    new_state = false;
+  }
+}
+
+void recv_state_data() { // receive USB1 data, ov
+  static byte ndx = 0; // buffer index
+  static char delimiter = ','; // column delimiter
+  static char endline = '\n'; // endline character
+  char rc; // current byte;
+
+  if (SerialUSB1.available() > 0){
+    rc = SerialUSB1.read();
+    if ((rc == endline) | (rc==delimiter)) { // end of frame or new column
+      state_chars[ndx] = '\0'; // terminate string
+      ndx = 0;
+      new_state = true;
+    }
+    else {
+      state_chars[ndx] = rc;
+      ndx++;
+      if (ndx >= num_chars) {
+        ndx = num_chars - 1;
+      } 
+
+    }
+  }
+}
+
+void execute_state(int cmd, int val) {
+
+  switch(cmd){
+    case 0: // do nothing
+      break;
+    case 1: // flip start scan trigger high
+      if (!bk_isscanning) {
+        digitalWriteFast(bk_scan_trig_pin, HIGH);
+        bk_scan_trig_state = true;
+        bk_scan_trig_timestamp = millis();
+        bk_isscanning = true;
+      }
+      break;
+    case 2: // kill scan
+      if (bk_isscanning) {
+        digitalWriteFast(bk_scan_trig_pin, HIGH);
+        bk_scan_trig_state = true;
+        bk_scan_trig_timestamp = millis();
+
+        SerialUSB2.print("abort, "); // abort trigger rising edge Fictrac frame
+        SerialUSB2.print(ft_current_frame);
+        SerialUSB2.print('\n');
+        SerialUSB2.println("END QUEUE");
+
+        // send kill scan signal to PrarieView API
+        BKSERIAL.println("-Abort");
+
+        bk_isscanning = false;
+      }
+      break;
+    case 3: // flip opto scan trigger high
+      digitalWriteFast(bk_opto_trig_pin, HIGH);
+      bk_opto_trig_state = true;
+      bk_opto_trig_timestamp = millis();
+
+
+      SerialUSB2.print("opto, "); // opto trigger rising edge Fictrac frame
+      SerialUSB2.print(ft_current_frame);
+      SerialUSB2.print('\n');
+      break;
+
+    case 4: // set heading pin to manual control (i.e. open loop)
+      closed_loop=false;
+    
+    case 5: // go back to closed loop 
+      closed_loop = true;
+
+    case 6: // set heading_dac value
+      heading_dac.setVoltage(val, false);
+
+    case 7: // set index_dac value 
+      index_dac.setVoltage(val,false);
+
+
+  }
+  check_pins();
+  
+
+}
+
+
+void check_pins() {
+// flip triggers down
+  int curr_timestamp = millis();
+  if (bk_scan_trig_state & ((curr_timestamp - bk_scan_trig_timestamp) > bk_trig_timeout)) {
+    if (bk_isscanning) { // if this is a start scan trigger
+      SerialUSB2.print("start, "); // start trigger falling edge Fictrac frame
+      SerialUSB2.print(ft_current_frame);
+      SerialUSB2.print('\n');
+    }
+    
+    digitalWriteFast(bk_scan_trig_pin,LOW);
+    bk_scan_trig_state=false;
+
+  }
+
+  if (bk_opto_trig_state & ((curr_timestamp - bk_opto_trig_timestamp) > bk_trig_timeout)) {
+    digitalWriteFast(bk_opto_trig_pin,LOW);
+    bk_opto_trig_state=false;
+  }
+}
+
 
 void ft_state() {
   recv_ft_data(); 
@@ -100,8 +233,8 @@ void ft_state() {
 void recv_ft_data() { // receive Fictrack data
     
     static byte ndx = 0; // buffer index
-    char delimiter = ','; // column delimiter
-    char endline = '\n'; // endline character
+    static char delimiter = ','; // column delimiter
+    static char endline = '\n'; // endline character
     char rc; // current byte
 
     if (Serial.available() > 0) { // cannot use while(Serial.available()) because Teensy will read all 
@@ -111,12 +244,12 @@ void recv_ft_data() { // receive Fictrack data
           ndx = 0; // restart buffer index
           ft_new_data = true;   // cue new data
 
-          if (rc == endline) { // check to make sure this works, checks that columns are being counted correctly
+          if (rc == endline) { // checks that columns are being counted correctly
             int _ft_index = ft_index + 1;
             if (_ft_index != (ft_num_cols )) {
               
-//              digitalToggle(ft_dropped_frame_pin);
-//            ft_index = ft_num_cols-1;
+              digitalToggle(ft_dropped_frame_pin);
+              ft_index = ft_num_cols-1;
             }
           }
           
@@ -149,12 +282,10 @@ void ft_state_machine() {
       // flip ft pin low 
       digitalWriteFast(ft_frame_pin,LOW);
 
-//      SerialUSB2.print("z \t");
-//      SerialUSB2.print(_ft_chars);
-//      SerialUSB2.print("\n");
-//      
       // update heading pin
-      heading_dac.setVoltage(int(max_dac_val * atof(_ft_chars) / (2 * PI)),false);
+      if (closed_loop) {
+        heading_dac.setVoltage(int(max_dac_val * atof(_ft_chars) / (2 * PI)),false);
+      }
       break;
     
     case 12: // x
@@ -165,22 +296,6 @@ void ft_state_machine() {
       y_dac.setVoltage(int(max_dac_val * (atof(_ft_chars) + PI) / (2 * PI)),false);
       break;
 
-//    case 20: // x
-//      // debugging print x cumm
-//      SerialUSB2.print("x \t");
-//      SerialUSB2.print(_ft_chars);
-//      SerialUSB2.print("\t");
-//
-//      break;
-//
-//    case 21: // y
-//      // debugging print y cumm
-//      SerialUSB2.print("y \t");
-//      SerialUSB2.print(_ft_chars);
-//      SerialUSB2.print("\t");
-//      
-      
-//      break;
   }
   
 }
@@ -203,89 +318,14 @@ void ft_state_machine() {
 // col 25 alt timestamp - frame capture time (ms since midnight)
 
 
-void bk_state() {
-  int _cmd = 0;
-  int _val = 0;
-  if (SerialUSB1.available() >0) {
-    _cmd = SerialUSB1.parseInt();
-    _val = SerialUSB1.parseInt();
-  }
-  bk_state_machine(_cmd, _val);
+// void bk_state() {
+//   int _cmd = 0;
+//   int _val = 0;
+//   if (SerialUSB1.available() > 0) {
+//     _cmd = SerialUSB1.parseInt();
+//     _val = SerialUSB1.parseInt();
+//   }
+//   bk_state_machine(_cmd, _val);
     
-}
+// }
 
-void bk_state_machine(int cmd, int val) {
-
-  
-  
-  switch(cmd){
-    case 0: // do nothing
-      break;
-    case 1: // flip start scan trigger high
-      if (!bk_isscanning) {
-        digitalWriteFast(bk_scan_trig_pin, HIGH);
-        bk_scan_trig_state = true;
-        bk_scan_trig_timestamp = millis();
-        bk_isscanning = true;
-      }
-      break;
-    case 2: // flip kill scan trigger high
-//      digitalWriteFast(bk_kill_scan_pin, HIGH);
-      if (bk_isscanning) {
-        digitalWriteFast(bk_scan_trig_pin, HIGH);
-        bk_scan_trig_state = true;
-        bk_scan_trig_timestamp = millis();
-
-        SerialUSB2.print("abort, "); // abort trigger rising edge Fictrac frame
-        SerialUSB2.print(ft_current_frame);
-        SerialUSB2.print('\n');
-        SerialUSB2.println("END QUEUE");
-
-        // send kill scan signal to PrarieView API
-        BKSERIAL.println("-Abort");
-
-        bk_isscanning = false;
-      }
-      break;
-    case 3: // flip opto scan trigger high
-      digitalWriteFast(bk_opto_trig_pin, HIGH);
-      bk_opto_trig_state = true;
-      bk_opto_trig_timestamp = millis();
-
-
-      SerialUSB2.print("opto, "); // opto trigger rising edge Fictrac frame
-      SerialUSB2.print(ft_current_frame);
-      SerialUSB2.print('\n');
-      break;
-
-    case 4: // set index_dac value 
-      index_dac.setVoltage(val,false);
-
-
-  }
-  bk_check_pins();
-  
-
-}
-
-
-void bk_check_pins() {
-// flip triggers down
-  int curr_timestamp = millis();
-  if (bk_scan_trig_state & ((curr_timestamp - bk_scan_trig_timestamp) > bk_trig_timeout)) {
-    if (bk_isscanning) { // if this is a start scan trigger
-      SerialUSB2.print("start, "); // start trigger falling edge Fictrac frame
-      SerialUSB2.print(ft_current_frame);
-      SerialUSB2.print('\n');
-    }
-    
-    digitalWriteFast(bk_scan_trig_pin,LOW);
-    bk_scan_trig_state=false;
-
-  }
-
-  if (bk_opto_trig_state & ((curr_timestamp - bk_opto_trig_timestamp) > bk_trig_timeout)) {
-    digitalWriteFast(bk_opto_trig_pin,LOW);
-    bk_opto_trig_state=false;
-  }
-}
