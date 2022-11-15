@@ -1,5 +1,13 @@
-// FicTrac reading variables
+// State reading variables
 const int num_chars = 256;
+char state_chars[num_chars];
+char _state_chars[num_chars];
+bool new_state = false;
+int state_index = 0;
+const int state_num_vals = 2;
+bool closed_loop = true;
+
+// FicTrac reading variables
 char ft_chars[num_chars];
 char _ft_chars[num_chars];
 boolean ft_new_data = false;
@@ -7,47 +15,37 @@ int ft_index=0;
 double ft_heading;
 float ft_x;
 float ft_y;
-const byte ft_frame_pin = 2;
+
+const byte ft_frame_pin = 2; // update pin value
 
 int ft_current_frame = 0;
 
 #include <Wire.h>
 #include <Adafruit_MCP4725.h>
-// include <Adafruit_IO.h>
 Adafruit_MCP4725 heading_dac;
 Adafruit_MCP4725 x_dac;
 Adafruit_MCP4725 y_dac;
-const int max_dac_val = 4095; // 0-4095 => <0-3.3 V>, change if you change pwm_resolution
+Adafruit_MCP4725 index_dac;
+const int max_dac_val = 4095; // 4096 - 12-bit resolution
 const byte ft_num_cols = 26; 
-const byte ft_dropped_frame_pin = 9; // still need to check
-const byte heading_pwm_pin =3;
-const int max_pwm_val = 256;
+const byte ft_dropped_frame_pin = 5; 
 
 //Bruker Triggers
-const byte bk_scan_trig_pin = 35;
+const byte bk_scan_trig_pin = 3; 
 bool bk_scan_trig_state = false;
 bool bk_isscanning = false;
 int bk_scan_trig_timestamp;
 
-const byte bk_opto_trig_pin = 34;
+const byte bk_opto_trig_pin = 4; 
 bool bk_opto_trig_state = false;
 int bk_opto_trig_timestamp;
 const int bk_trig_timeout = 10;
 
-#define BKSERIAL Serial7
-//Serial7.setTX(28);
-//Serial7.setRX(29);
-// rx3 15
-// tx3 14
-
-const byte cam_trig_pin = 41;
-int cam_pin_val;
+#define BKSERIAL Serial6 // update to current pin settings
 
 
-
-
-
-// change FT pin to toggle each frame to that pin has time to get high
+//const byte cam_trig_pin = 41; // update pin value - may not be used
+//int cam_pin_val;
 
 
 void setup() {
@@ -63,12 +61,10 @@ void setup() {
 
   // start DACs
   heading_dac.begin(0x62,&Wire);
-  x_dac.begin(0x62,&Wire1);
-  y_dac.begin(0x63,&Wire1);
-  analogWriteResolution(8);
-  analogWriteFrequency(3,585937.5);
-  analogWrite(heading_pwm_pin, 128);
-//  pinMode(heading_pwm_pin, OUTPUT);
+  x_dac.begin(0x63,&Wire);
+  y_dac.begin(0x62,&Wire1);
+//  4th dac available for additional output
+  index_dac.begin(0x63, &Wire1);
 
   // Bruker setup
   pinMode(bk_scan_trig_pin, OUTPUT);
@@ -80,7 +76,7 @@ void setup() {
   bk_opto_trig_timestamp = millis();
 
   // camera trig
-  pinMode(cam_trig_pin,INPUT);
+//  pinMode(cam_trig_pin,INPUT);
 
   BKSERIAL.begin(115200);
   
@@ -92,151 +88,55 @@ void setup() {
 void yield() {} // get rid of hidden arduino yield function
 
 FASTRUN void loop() { // FASTRUN teensy keyword
-
+    state_machine();
     ft_state();
-    bk_state();
 }
 
-void ft_state() {
-  recv_ft_data(); 
-  if (ft_new_data == true) {
+void state_machine() {
+  static int cmd = 0;
+  static int val = 0;
 
-    strcpy(_ft_chars, ft_chars); // prevent overwriting
-    ft_state_machine();
-    ft_index = (ft_index+1) % ft_num_cols; // keep track of columns in fictrack  
-    ft_new_data = false;
-  }
-  
-}
-
-void recv_ft_data() { // receive Fictrack data
-    
-    static byte ndx = 0; // buffer index
-    char delimiter = ','; // column delimiter
-    char endline = '\n'; // endline character
-    char rc; // current byte
-
-    if (Serial.available() > 0) { // cannot use while(Serial.available()) because Teensy will read all 
-        rc = Serial.read(); 
-        if ((rc == endline)|(rc==delimiter)) { // end of frame or new column      
-          ft_chars[ndx] = '\0'; // terminate the string
-          ndx = 0; // restart buffer index
-          ft_new_data = true;   // cue new data
-
-          if (rc == endline) { // check to make sure this works, checks that columns are being counted correctly
-            int _ft_index = ft_index + 1;
-            if (_ft_index != (ft_num_cols )) {
-              digitalToggle(ft_dropped_frame_pin);
-//            ft_index = ft_num_cols-1;
-            }
-          }
-          
-        }
-        else {
-          ft_chars[ndx] = rc;
-          ndx++;
-          if (ndx >= num_chars) {
-              ndx = num_chars - 1;
-          } 
-        }
+  recv_state_data();
+  if (new_state) {
+    strcpy(_state_chars,state_chars);
+    if (state_index==0) {
+      cmd = atoi(_state_chars)
+    } 
+    else if (state_index == 1) {
+      val = atoi(_state_chars)
     }
-}
-
-void ft_state_machine() {
-
-  
-  
-
-  // switch case statement for variables of interest
-  switch (ft_index) {
-    
-    case 0: // new FicTrac frame
-      // flip ft pin high
-      digitalWriteFast(ft_frame_pin,HIGH);
-      break;
-
-    case 1: // frame counter
-      ft_current_frame = atoi(_ft_chars);
-      break;
-
-    case 17: // heading 
-      // flip ft pin low 
-      digitalWriteFast(ft_frame_pin,LOW);
-
-//      SerialUSB2.print("z \t");
-//      SerialUSB2.print(_ft_chars);
-//      SerialUSB2.print("\n");
-//      
-      // update heading pin
-      heading_dac.setVoltage(int(max_dac_val * atof(_ft_chars) / (2 * PI)),false);
-      analogWrite(heading_pwm_pin, int(max_pwm_val * atof(_ft_chars) / (2 * PI)));
-//      SerialUSB2.println(_ft_chars);
-//      analogWrite(ft_heading_pin, int(max_pwm_val * atof(_ft_chars) / (2 * PI)));
-
-      
-      break;
-    
-    case 12: // x
-      x_dac.setVoltage(int(max_dac_val * (atof(_ft_chars) + PI) / (2 * PI)),false);
-//      analogWrite(ft_x_pin, int(max_pwm_val * (atof(_ft_chars)+PI) / (2 * PI))); 
-      break;
-
-    case 13: // y
-      y_dac.setVoltage(int(max_dac_val * (atof(_ft_chars) + PI) / (2 * PI)),false);
-//      analogWrite(ft_y_pin, int(max_pwm_val * (atof(_ft_chars)+PI) / (2 * PI))); 
-      break;
-
-//    case 20: // x
-//      // debugging print x cumm
-//      SerialUSB2.print("x \t");
-//      SerialUSB2.print(_ft_chars);
-//      SerialUSB2.print("\t");
-//
-//      break;
-//
-//    case 21: // y
-//      // debugging print y cumm
-//      SerialUSB2.print("y \t");
-//      SerialUSB2.print(_ft_chars);
-//      SerialUSB2.print("\t");
-//      
-      
-//      break;
+    execute_state(cmd,val)
+    state_index = (state_index+1) % state_num_vals;
+    new_state = false;
   }
-  
 }
 
+void recv_state_data() { // receive USB1 data, ov
+  static byte ndx = 0; // buffer index
+  static char delimiter = ','; // column delimiter
+  static char endline = '\n'; // endline character
+  char rc; // current byte;
 
-// col 1 frame counter
-// col 2-4 delta rotation vector (x,y,z) cam coords
-// col 5 delta rotation error
-// col 6-8 delta rotation in lab coordinates
-// col 9-11 abs. rot. vector cam coords
-// col 12-14 abs. rot. vector lab coords
-// col 15-16 integrated x/y lab coords
-// col 17 integrated heading lab coords
-// col 18 movement direction lab coords (add col 17 to get world centric direction)
-// col 19 running speed. scale by sphere radius to get true speed
-// col 20-21 integrated x/y neglecting heading
-// col 22 timestamp either position in video file or frame capture time
-// col 23 sequence counter - usually frame counter but can reset is tracking resets
-// col 24 delta timestep since last frame
-// col 25 alt timestamp - frame capture time (ms since midnight)
+  if (SerialUSB1.available() > 0){
+    rc = SerialUSB1.read();
+    if ((rc == endline) | (rc==delimiter)) { // end of frame or new column
+      state_chars[ndx] = '\0'; // terminate string
+      ndx = 0;
+      new_state = true;
+    }
+    else {
+      state_chars[ndx] = rc;
+      ndx++;
+      if (ndx >= num_chars) {
+        ndx = num_chars - 1;
+      } 
 
-
-void bk_state() {
-  int _cmd = 0;
-  if (SerialUSB1.available() >0) {
-    _cmd = SerialUSB1.parseInt();
+    }
   }
-  bk_state_machine(_cmd);
-    
 }
 
-void bk_state_machine(int cmd) {
+void execute_state(int cmd, int val) {
 
-  
-  
   switch(cmd){
     case 0: // do nothing
       break;
@@ -248,8 +148,7 @@ void bk_state_machine(int cmd) {
         bk_isscanning = true;
       }
       break;
-    case 2: // flip kill scan trigger high
-//      digitalWriteFast(bk_kill_scan_pin, HIGH);
+    case 2: // kill scan
       if (bk_isscanning) {
         digitalWriteFast(bk_scan_trig_pin, HIGH);
         bk_scan_trig_state = true;
@@ -277,15 +176,27 @@ void bk_state_machine(int cmd) {
       SerialUSB2.print('\n');
       break;
 
+    case 4: // set heading pin to manual control (i.e. open loop)
+      closed_loop=false;
+    
+    case 5: // go back to closed loop 
+      closed_loop = true;
+
+    case 6: // set heading_dac value
+      heading_dac.setVoltage(val, false);
+
+    case 7: // set index_dac value 
+      index_dac.setVoltage(val,false);
+
 
   }
-  bk_check_pins();
+  check_pins();
   
 
 }
 
 
-void bk_check_pins() {
+void check_pins() {
 // flip triggers down
   int curr_timestamp = millis();
   if (bk_scan_trig_state & ((curr_timestamp - bk_scan_trig_timestamp) > bk_trig_timeout)) {
@@ -305,3 +216,116 @@ void bk_check_pins() {
     bk_opto_trig_state=false;
   }
 }
+
+
+void ft_state() {
+  recv_ft_data(); 
+  if (ft_new_data == true) {
+
+    strcpy(_ft_chars, ft_chars); // prevent overwriting
+    ft_state_machine();
+    ft_index = (ft_index+1) % ft_num_cols; // keep track of columns in fictrack  
+    ft_new_data = false;
+  }
+  
+}
+
+void recv_ft_data() { // receive Fictrack data
+    
+    static byte ndx = 0; // buffer index
+    static char delimiter = ','; // column delimiter
+    static char endline = '\n'; // endline character
+    char rc; // current byte
+
+    if (Serial.available() > 0) { // cannot use while(Serial.available()) because Teensy will read all 
+        rc = Serial.read(); 
+        if ((rc == endline)|(rc==delimiter)) { // end of frame or new column      
+          ft_chars[ndx] = '\0'; // terminate the string
+          ndx = 0; // restart buffer index
+          ft_new_data = true;   // cue new data
+
+          if (rc == endline) { // checks that columns are being counted correctly
+            int _ft_index = ft_index + 1;
+            if (_ft_index != (ft_num_cols )) {
+              
+              digitalToggle(ft_dropped_frame_pin);
+              ft_index = ft_num_cols-1;
+            }
+          }
+          
+        }
+        else {
+          ft_chars[ndx] = rc;
+          ndx++;
+          if (ndx >= num_chars) {
+              ndx = num_chars - 1;
+          } 
+        }
+    }
+}
+
+void ft_state_machine() {
+
+  // switch case statement for variables of interest
+  switch (ft_index) {
+    
+    case 0: // new FicTrac frame
+      // flip ft pin high
+      digitalWriteFast(ft_frame_pin,HIGH);
+      break;
+
+    case 1: // frame counter
+      ft_current_frame = atoi(_ft_chars);
+      break;
+
+    case 17: // heading 
+      // flip ft pin low 
+      digitalWriteFast(ft_frame_pin,LOW);
+
+      // update heading pin
+      if (closed_loop) {
+        heading_dac.setVoltage(int(max_dac_val * atof(_ft_chars) / (2 * PI)),false);
+      }
+      break;
+    
+    case 12: // x
+      x_dac.setVoltage(int(max_dac_val * (atof(_ft_chars) + PI) / (2 * PI)),false);
+      break;
+
+    case 13: // y
+      y_dac.setVoltage(int(max_dac_val * (atof(_ft_chars) + PI) / (2 * PI)),false);
+      break;
+
+  }
+  
+}
+
+
+// col 1 frame counter
+// col 2-4 delta rotation vector (x,y,z) cam coords
+// col 5 delta rotation error
+// col 6-8 delta rotation in lab coordinates
+// col 9-11 abs. rot. vector cam coords
+// col 12-14 abs. rot. vector lab coords
+// col 15-16 integrated x/y lab coords
+// col 17 integrated heading lab coords
+// col 18 movement direction lab coords (add col 17 to get world centric direction)
+// col 19 running speed. scale by sphere radius to get true speed
+// col 20-21 integrated x/y neglecting heading
+// col 22 timestamp either position in video file or frame capture time
+// col 23 sequence counter - usually frame counter but can reset is tracking resets
+// col 24 delta timestep since last frame
+// col 25 alt timestamp - frame capture time (ms since midnight)
+
+
+// void bk_state() {
+//   int _cmd = 0;
+//   int _val = 0;
+//   if (SerialUSB1.available() > 0) {
+//     _cmd = SerialUSB1.parseInt();
+//     _val = SerialUSB1.parseInt();
+//   }
+//   bk_state_machine(_cmd, _val);
+    
+// }
+

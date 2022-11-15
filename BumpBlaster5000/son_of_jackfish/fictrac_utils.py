@@ -1,17 +1,27 @@
 import os
 import socket
+import warnings
 import select
 import subprocess
 import threading
 import queue
+<<<<<<< HEAD
 import numpy as np
 import pandas as pd
 from BumpBlaster5000.utils import threaded
+=======
+import multiprocessing as mp
+>>>>>>> mp_dev
 from glob import glob
 import time
 from Phidget22.Devices.VoltageOutput import VoltageOutput as PhidgetVO
 
 import pandas as pd
+
+from BumpBlaster5000.utils import threaded
+
+
+
 
 FICTRAC_PATH = r'C:\Users\fisherlab\Documents\FicTrac211\fictrac.exe'
 CONFIG_PATH = r'C:\Users\fisherlab\Documents\FicTrac211\config.txt'
@@ -55,7 +65,7 @@ class FicTracSocketManager:
     """
 
     def __init__(self, fictrac_path=FICTRAC_PATH, config_file=CONFIG_PATH, host='127.0.0.1', port=65413,
-                 columns_to_read={'heading': 17, 'integrated x': 20, 'integrated y': 21, 'speed': 19},
+                 columns_to_read=None, multiprocess_queue=True,
                  ):
         """
 
@@ -66,6 +76,8 @@ class FicTracSocketManager:
         :param columns_to_read:
         """
 
+        if columns_to_read is None:
+            columns_to_read = {'heading': 17, 'integrated x': 20, 'integrated y': 21, 'speed': 19}
         self.ft_subprocess = FicTracSubProcess(fictrac_path=fictrac_path,
                                                config_file=config_file)
 
@@ -82,17 +94,31 @@ class FicTracSocketManager:
         self.ft_buffer = ""
         self.ft_output_path = None
         self._ft_output_handle = None
-        self.ft_queue = queue.Queue()
+        if multiprocess_queue: # deal with threading vs multiprocessing
+            self.ft_queue = mp.SimpleQueue()
+        else:
+            self.ft_queue = queue.SimpleQueue()
         self.columns_to_read = columns_to_read
 
         # start read thread
 
-    def open(self):
+    def open(self, timeout = 5):
         '''
 
         :return:
         '''
         self.ft_subprocess.open()
+        tic = time.perf_counter()
+        print('Waiting for FicTrac to finish openiing')
+        while not self.ft_subprocess.open_evnt.is_set():
+            if time.perf_counter() - tic < timeout:
+                time.sleep(.01)
+            else:
+                warnings.warn('Timeout exceeded. Fictrac may not be open')
+                break
+
+
+
         if not self._socket_open.is_set():
             self.open_socket()
 
@@ -108,8 +134,6 @@ class FicTracSocketManager:
         while os.path.exists(fictrac_output_file):
             post+=1
             fictrac_output_file = "%s_%d.log" % (os.path.splitext(fictrac_output_file)[0], post)
-
-
 
         self.ft_output_path = fictrac_output_file
         self._ft_output_handle = open(self.ft_output_path, 'w')
@@ -200,6 +224,8 @@ class FicTracSocketManager:
             return self.ft_queue.get()
         except queue.Empty:
             return None
+
+
 
     @threaded
     def _read_thread(self):

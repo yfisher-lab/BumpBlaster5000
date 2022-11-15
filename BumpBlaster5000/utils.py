@@ -1,6 +1,7 @@
 import threading
 import numpy as np
 from numba import njit
+import multiprocessing as mp
 
 def threaded(fn):
     '''
@@ -14,6 +15,18 @@ def threaded(fn):
         thread = threading.Thread(target=fn, args=args, kwargs=kwargs)
         thread.start()
         return thread
+    return wrapper
+
+def multiprocessed(fn):
+    '''
+
+    :param fn:
+    :return:
+    '''
+    def wrapper(*args, **kwargs):
+        process = mp.Process(target=fn, arge=args, kwargs=kwargs)
+        process.start()
+        return process
     return wrapper
 
 @njit

@@ -1,7 +1,11 @@
 name: BumpBlaster
 channels:
+  - numba
   - defaults
+  - anaconda
+  - conda-forge
 dependencies:
+  # - pip
   - numpy
   - scipy
   - pyqt
@@ -13,5 +17,7 @@ dependencies:
   - python=3.6
   - numba
   - pillow
-prefix: C:\Users\markp\anaconda3\envs\BumpBlaster
+  - pip:
+    - -e .
+
 # in addition, have to install pycapture2 api
