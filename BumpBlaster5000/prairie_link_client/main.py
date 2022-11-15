@@ -177,8 +177,8 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         '''
 
         # make connection
-        self.pl = win32com.client.Dispatch("PrairieLink.Application")
-        self.pl.Connect()
+        self.pl = win32com.client.Dispatch("PrairieLink64.Application")
+        self.pl.Connect('127.0.0.1')
 
         # set thread safe event
         self._pl_active.set()
