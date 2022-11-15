@@ -35,7 +35,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.cam_view_toggle.stateChanged.connect(self.toggle_cam_view)
 
         ## fictrac
-        self.ft_manager = ft_utils.FicTracSocketManager()  # add arguments
+        self.ft_manager = ft_utils.FicTracSocketManager_wPhidget()  # add arguments
         self.ft_frames = None
         self.launch_fictrac_toggle.stateChanged.connect(self.toggle_fictrac)
 
@@ -160,9 +160,9 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.teensy_input_serial.write(b'2')  # see teensy_control.ino
         while self.ft_frames['abort'] is None:
             time.sleep(.01)
-
-        if self.ft_manager.ft_subprocess.open_evnt.is_set():
-            df = self.ft_manager.stop_reading(return_pandas=True)
+        #
+        # if self.ft_manager.ft_subprocess.open_evnt.is_set():
+        #     df = self.ft_manager.stop_reading(return_pandas=True)
 
         self.start_scan_push.setEnabled(True)
         self.trigger_opto_push.setEnabled(False)
@@ -170,18 +170,18 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
 
         #ToDo: handle case of fictrac not running. Error df referenced before assignment
         print(self.ft_frames)
-        print(df['frame counter'].iloc[0:10])
-
-        idx = df.index[(df['frame counter'] >= self.ft_frames['start']) & (df['frame counter']<= self.ft_frames['abort'])]
-        df = df.loc[idx]
-
-        ft_file = os.path.join(self.exp_path, "fictrac_aligned.csv")
-        post = 0
-        while os.path.exists(ft_file):
-            post += 1
-            ft_file = "%s_%d.csv" % (os.path.splitext(ft_file)[0], post)
-        print(ft_file)
-        df.to_csv(ft_file)
+        # print(df['frame counter'].iloc[0:10])
+        #
+        # idx = df.index[(df['frame counter'] >= self.ft_frames['start']) & (df['frame counter']<= self.ft_frames['abort'])]
+        # df = df.loc[idx]
+        #
+        # ft_file = os.path.join(self.exp_path, "fictrac_aligned.csv")
+        # post = 0
+        # while os.path.exists(ft_file):
+        #     post += 1
+        #     ft_file = "%s_%d.csv" % (os.path.splitext(ft_file)[0], post)
+        # print(ft_file)
+        # df.to_csv(ft_file)
 
     def trigger_opto(self):
         '''
@@ -374,7 +374,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self._isreading_teensy.clear()
 
         # clear events for reading bump phase
-        self._read_bump_event.clear()
+        # self._read_bump_event.clear()
 
         # join serial threads
         self.teensy_read_handle.join()
