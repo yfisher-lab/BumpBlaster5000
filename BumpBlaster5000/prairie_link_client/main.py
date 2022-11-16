@@ -4,9 +4,10 @@ import threading
 import sys
 import time
 import warnings
+import ctypes
+import os
 
 import numpy as np
-import win32com.client
 from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import QApplication
 import pyqtgraph as pg
@@ -16,7 +17,10 @@ from BumpBlaster5000.prairie_link_client import plugin_viewer
 from BumpBlaster5000.utils import pol2cart, cart2pol, threaded
 from BumpBlaster5000 import params
 
-
+from sys import platform
+if platform != 'linux':
+    import win32com.client
+    
 class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
     def __init__(self, parent=None):
         super(PLUI, self).__init__(parent)
@@ -47,6 +51,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         print("PrairieLink connected")
         # connect to teensy serial port to read PL commands
         self.teensy_srl_handle = self.continuous_read_teensy_pl_commands()
+        self._pid = os.getpid() # prairie link process id for reading raw data stream
 
         # connect channel view buttons
         self.ch1ViewButton.stateChanged.connect(self.set_ch1_active)
@@ -110,16 +115,16 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.ch2StaticChanButton.setChecked(True)
 
 
-        self.streamDataCheckBox.stateChanged.connect(self.set_streaming)
-        self.streamDataCheckBox.setCheckable(False)
-        self._stream_bump = False
+        # self.streamDataCheckBox.stateChanged.connect(self.set_streaming)
+        # self.streamDataCheckBox.setCheckable(False)
+        # self._stream_bump = False
         self._bump_signal = None
         self._bump_mag = None
         self._bump_phase = None
         self._bump_queue = queue.Queue()
 
         # start serial port to send bump data to VR computer
-        self.bump_srl_handle = self.write_bump_data_serial()
+        # self.bump_srl_handle = self.write_bump_data_serial()
 
         # bump viewer
         self.bump_viewer = self.bumpViewer.getPlotItem()
@@ -154,20 +159,20 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
                 self.pl.SendScriptCommands(srl.readline().decode('UTF-8').rstrip())
 
     @threaded
-    def write_bump_data_serial(self):
+    def read_heading_data_serial(self):
         '''
-        send bump phase and magnitude to VR computer over dedicated serial port
+        reading heading data from VR computer over dedicated serial port
         :param vr_com: com port to VR computer
         :param baudrate: baudrate
         :return:
         '''
 
-        with serial.Serial(self._params['vr_com'], baudrate=self._params['baudrate']) as srl:
-            while self._pl_active.is_set():  # while prairie link is active
-                try:
-                    srl.write(self._bump_queue.get().encode('utf-8'))
-                except queue.Queue.Empty:
-                    pass
+        # with serial.Serial(self._params['vr_com'], baudrate=self._params['baudrate']) as srl:
+        #     while self._pl_active.is_set():  # while prairie link is active
+        #         try:
+        #             srl.write(self._bump_queue.get().encode('utf-8'))
+        #         except queue.Queue.Empty:
+        #             pass
 
     def open_prairie_link(self):
         '''
@@ -276,8 +281,8 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         if self.ch2_active:
             self._reinit_zbuffer(2)
 
-        # self._get_frame_period()
-        # self._zstack_period = self._frame_period * self._zstack_frames
+        self._get_frame_period()
+        self._zstack_period = self._frame_period * self._zstack_frames
 
 
     def frame_update(self):
@@ -674,6 +679,8 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
             num_baseline_samples = num_func_samples
         num_bump_samples = int(self._params['bump_signal_time'] / self._zstack_period)
 
+
+
         if self.rois['type'] == 'EB':
             # start buffers
             # num rois x baseline_time
@@ -686,18 +693,18 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         elif self.rois['type'] == 'PB':
             raise NotImplementedError
 
-    def _update_bump(self):
-        '''
-        update bump calculation for each frame
-        :return:
-        '''
+    # def _update_bump(self):
+    #     '''
+    #     update bump calculation for each frame
+    #     :return:
+    #     '''
 
-        if self._stream_bump:
-            self._apply_roi_masks()
-            self._calc_bump_phase()
-            self._plot_bump()
-        else:
-            return
+    #     if self._stream_bump:
+    #         self._apply_roi_masks()
+    #         self._calc_bump_phase()
+    #         self._plot_bump()
+    #     else:
+    #         return
 
     def _apply_roi_masks(self):
         '''
