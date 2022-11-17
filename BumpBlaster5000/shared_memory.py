@@ -43,7 +43,7 @@ class SharedPeriodicCounter:
             return self.val.value
 
 
-class MultiDimSharedBuffer:
+class SharedArray:
     def __init__(self, shape: tuple, name='buffer', dtype=np.int16):
         
         """wrapper class for multiprocessing.shared_memory.SharedMemory.
@@ -65,6 +65,9 @@ class MultiDimSharedBuffer:
         self._shm = None
         self.buff = None
         self._creator = False
+        
+    def __del__(self):
+        self.close(suppress_warning=True)
 
     def create(self, inplace = False):
         """create shared memory object and initialize the buffer
@@ -120,13 +123,14 @@ class MultiDimSharedBuffer:
         """
         self.buff = np.ndarray(shape=self.shape, dtype=self.dtype, buffer=self._shm.buf)
 
-    def close(self):
+    def close(self, suppress_warning = False):
         """gracefully disconnect form memory object 
         """
         
         if self._shm is None:
-            warn('Instance of memory object does not exist. Either never created ' + \
-                'or already closed')
+            if not suppress_warning:
+                warn('Instance of memory object does not exist. Either never created ' + \
+                    'or already closed')
             return
         
         self._shm.close()

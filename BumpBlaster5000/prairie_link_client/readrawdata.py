@@ -4,22 +4,16 @@ import ctypes
 
 import numpy as np
 
-from sys import platform
-if platform != 'linux':
-    import win32com.clienta
+import params
+from shared_memory import SharedArray
 
-
+if params.hostname != 'bard-smaug-slayer':
+    import win32com.client
 
 class PMTBuffer():
-    #ToDo: change to not inherit but to instantiate two buffers 
-    # (1 for buffer, 1 for index) and overload methods
-    def __init__(self, shape, names=None, dtype=np.int16, axis_order=None,
+    
+    def __init__(self, shape, names=None, dtype=np.int16,
                 resonant = True):
-        # super().__init__(shape, name, dtype, axis_order)
-
-        if names is None:
-            self.names = {'buffer':'pmt_buffer','frame_sync':'frame_sync'}
-        
         
         self.axis_order = ('buffer length',
                             'z slice',
@@ -27,6 +21,24 @@ class PMTBuffer():
                             'column',
                             'sample',
                             'pmt')
+        
+        if len(shape) != 6:
+            raise Exception('Shape of PMT buffer must be of length 6 ' +
+                            f"{self.axis_order}")
+
+        if names is None:
+            self.names = {'buffer':'pmt_buffer',
+                          'frame_sync':'frame_sync'}
+        
+        # check that buffer and frame_sync are in keys
+        if not isinstance(names,dict):
+            raise Exception("names must be a dict with keys 'buffer' and 'frame_sync' ")
+        if not ('buffer' in self.names.keys() and 'frame_sync' in self.names.keys()):
+            raise Exception("names must contain keys 'buffer' and 'frame_sync'")
+        
+        
+        
+        self.dtype = dtype
 
         self.buffer_index = 0
         self.max_buffer = shape[0]
@@ -39,11 +51,42 @@ class PMTBuffer():
         self.curr_flat_index = 0
 
         self._buffer_inst = None
+        self.buff = None
         self._frame_sync_inst = None
 
     def create(self):
+        
+        self._buffer_inst = SharedArray(self.shape,
+                                        name = self.names['buffer'],
+                                        dtype = self.dtype).create()
+        self.buff = self._buffer_inst.buff
+        
+        self._frame_sync_inst = SharedArray([1,],
+                                            name = self.names['buffer'],
+                                            dtype = int).create()
+        self.frame_sync = self._frame_sync_inst.buff
+        
+        self._creator = True
+        
+    def connect(self):
+        self._buffer_inst = SharedArray(self.shape,
+                                        name = self.names['buffer'],
+                                        dtype = self.dtype).connect()
+        self.buff = self._buffer_inst.buff
+        
+        self._frame_sync_inst = SharedArray([1,],
+                                            name = self.names['buffer'],
+                                            dtype = int).connect()
+        self.frame_sync = self._frame_sync_inst.buff
+        
+        self._creator = False
 
-
+    def close(self, suppress_warning=False):
+        self._buffer_inst.close(suppress_warning=suppress_warning)
+        self._frame_sync_inst.close(suppress_warning=suppress_warning)
+        
+    def __del__(self):
+        self.close(suppress_warning=True)
 
     def update_buffer(self, n_samples, flat_data):
 
@@ -88,6 +131,10 @@ class PMTBuffer():
     @property
     def latest_full_zstack(self):
         return 
+    
+    @property
+    def latest_n_zstacks(self, n):
+        return
 
 # Only 1 instance of Prairie Link can be open
 class RealTimePrairieLinkHandler:
