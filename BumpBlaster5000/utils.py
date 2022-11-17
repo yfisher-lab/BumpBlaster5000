@@ -24,7 +24,7 @@ def multiprocessed(fn):
     :return:
     '''
     def wrapper(*args, **kwargs):
-        process = mp.Process(target=fn, arge=args, kwargs=kwargs)
+        process = mp.Process(target=fn, args=args, kwargs=kwargs)
         process.start()
         return process
     return wrapper

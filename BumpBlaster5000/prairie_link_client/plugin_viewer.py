@@ -6,7 +6,9 @@
 #
 # WARNING! All changes made in this file will be lost!
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+# from PyQt5 import QtCore, QtGui, QtWidgets
+import pyqtgraph as pg
+from pyqtgraph.Qt import QtCore, QtWidgets, QtGui
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -45,6 +47,8 @@ class Ui_MainWindow(object):
         MainWindow.setToolButtonStyle(QtCore.Qt.ToolButtonIconOnly)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
+
+        
         self.ch1Viewer = PlotWidget(self.centralwidget)
         self.ch1Viewer.setGeometry(QtCore.QRect(350, 100, 381, 341))
         self.ch1Viewer.setObjectName("ch1Viewer")
@@ -400,4 +404,4 @@ class Ui_MainWindow(object):
         self.roiIndexLabel.setText(_translate("MainWindow", "ROI #"))
         self.label_2.setText(_translate("MainWindow", "Time"))
 
-from pyqtgraph import ImageView, PlotWidget, ImageItem
+# from pyqtgraph import PlotWidget
