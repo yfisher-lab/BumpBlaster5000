@@ -66,38 +66,28 @@ class MultiDimBuffer():
 
 
 class PMTBuffer(MultiDimBuffer):
-
-    def __init__(self, shape, frame_sync = None, name='pmt_buffer', dtype=np.int16, axis_order=None):
+    #ToDo: change to not inherit but to instantiate two buffers 
+    # (1 for buffer, 1 for index) and overload methods
+    def __init__(self, shape,frame_sync = None, name='pmt_buffer', dtype=np.int16, axis_order=None,
+                resonant = True):
         super().__init__(shape, name, dtype, axis_order)
 
         if frame_sync is None:
             self.frame_sync = BufferFrameIndex(maxval=shape[0])
         
-        if axis_order is None:
-            self.axis_order = ('buffer length',
-                                'z slice',
-                                'line',
-                                'column',
-                                'sample',
-                                'pmt')
+        
+        self.axis_order = ('buffer length',
+                            'z slice',
+                            'line',
+                            'column',
+                            'sample',
+                            'pmt')
 
         self.buffer_index = 0
         self.max_buffer = shape[0]
 
         self.z_index = 0
         self.max_z_index = shape[1]
-
-        self.line = 0
-        self.max_line = shape[2]
-
-        self.column = 0
-        self.max_column = shape[3]
-
-        self.sample = 0
-        self.max_samples = shape[4]
-
-        self.pmt = 0
-        self.max_pmt = shape[5]
 
         self.samples_per_frame = np.prod(shape[2:])
 
@@ -109,10 +99,13 @@ class PMTBuffer(MultiDimBuffer):
                                             self.samples_per_frame)
         
         if n_new_frames == 0:
+            sub_mat = self.buffer[self.buffer_index,self.z_index,:,:,:,:]
             fill_frame(self.curr_flat_index,new_flat_index, flat_data)
         else:
             flat_data_idx = 0
             for frame in range(n_new_frames):
+                sub_mat = self.buffer[self.buffer_index,self.z_index,:,:,:,:]
+
                 frame_size = self.samples_per_frame-self.curr_flat_index
                 new_flat_data_idx = flat_data_idx + frame_size
                 # fill frame
@@ -123,26 +116,26 @@ class PMTBuffer(MultiDimBuffer):
                 flat_data_idx=new_flat_data_idx
                 self.curr_flat_index=0
 
+                #reverse odd lines to deal with resonant mirror
+                sub_mat[:,:,:,:] = sub_mat[:,::-1,:,:]
+
                 # update z_index
                 new_buff_ind, self.z_index = divmod(self.z_index+1,self.max_z_index)
 
                 # update 
                 self.buffer_index = (self.buffer_index + new_buff_ind) % self.max_buffer
+                
 
             fill_frame(self.curr_flat_index,new_flat_index, flat_data[flat_data_idx:])
 
 
         def fill_frame(start,stop,data_slice):
-            sub_mat = self.buffer[self.buffer_index,self.z_index,:,:,:,:]
             lines, columns, samples, pmts = np.unravel_index(np.arange(start,stop))
             sub_mat[lines,columns,samples,pmts]=data_slice
-
-            
-
-
     
-    
-
+    @property
+    def latest_full_zstack(self):
+        return 
 
 # Only 1 instance of Prairie Link can be open
 class RealTimePrairieLinkHandler:
@@ -165,8 +158,6 @@ class RealTimePrairieLinkHandler:
         self.samples_per_frame = int(self._n_pmts * self.lines_per_frame * \
                                 self.pixels_per_line * self.samples_per_pixel)
 
-        
-        
 
     def open_praire_link(self):
         self._pl = win32com.client.Dispatch("PrairieLink64.Application")
@@ -205,6 +196,11 @@ class RealTimePrairieLinkHandler:
             self.update()
 
         self._pl.SendScriptCommands('-srd False')
+        # read data stream until no bytes are returned
+
+        # unlink shared memory object
+
+        # destroy shared memory object
 
 
 
