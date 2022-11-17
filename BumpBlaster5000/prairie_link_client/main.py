@@ -13,12 +13,11 @@ from PyQt5.QtWidgets import QApplication
 import pyqtgraph as pg
 import serial
 
-from BumpBlaster5000.prairie_link_client import plugin_viewer
-from BumpBlaster5000.utils import pol2cart, cart2pol, threaded
-from BumpBlaster5000 import params
+# from BumpBlaster5000.prairie_link_client import plugin_viewer
+from utils import pol2cart, cart2pol, threaded
+# from BumpBlaster5000 import params
 
-from sys import platform
-if platform != 'linux':
+if params.hostname:
     import win32com.client
     
 class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):

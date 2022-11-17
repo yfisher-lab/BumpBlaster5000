@@ -6,11 +6,7 @@ import numpy as np
 
 from sys import platform
 if platform != 'linux':
-    import win32com.client
-
-# from time import sleep
-
-NP_SHARED_NAME = 'pmt_buffer_array'
+    import win32com.clienta
 
 
 

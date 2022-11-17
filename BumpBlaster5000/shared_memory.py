@@ -88,13 +88,14 @@ class MultiDimSharedBuffer:
         if not inplace:
             return self
 
-    def connect(self, inplace = False):
+    def connect(self, inplace = False, read_only=True):
         """ connect to an existing shared memory object and connect array
 
         Args:
             inplace (bool, optional): Whether to return a reference to the object
             for cascading. Defaults to False which will return the ref.
-
+            read_only (bool, optional): When connecting to existing object, make a 
+            read_only pointer to buffer
         Returns:
             _type_: self reference for cascading
         """
@@ -109,6 +110,8 @@ class MultiDimSharedBuffer:
             return
         
         self._init_buffer()
+        if read_only:
+            self.buff.setflags(write=False)
         if not inplace:
             return self
 
@@ -132,5 +135,3 @@ class MultiDimSharedBuffer:
         self._shm = None
         self._creator = False
         self.buff = None
-        
-
