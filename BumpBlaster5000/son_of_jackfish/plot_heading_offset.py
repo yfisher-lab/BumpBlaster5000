@@ -4,8 +4,9 @@ import numpy as np
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtWidgets
 
-import BumpBlaster5000
-from BumpBlaster5000.utils import pol2cart
+# import BumpBlaster5000
+# from BumpBlaster5000.utils import pol2cart
+from utils import pol2cart
 
 # def update():
 

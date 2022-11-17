@@ -3,8 +3,9 @@ from pyqtgraph.Qt import QtCore, QtWidgets
 import numpy as np
 
 
-import BumpBlaster5000
-from BumpBlaster5000.utils import pol2cart
+# import BumpBlaster5000
+# from BumpBlaster5000.utils import pol2cart
+from utils import pol2cart
 
 from time import perf_counter
 

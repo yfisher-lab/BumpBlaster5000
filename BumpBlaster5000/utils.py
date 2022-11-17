@@ -1,7 +1,10 @@
 import threading
-import numpy as np
+
 from numba import njit
-import multiprocessing as mp
+
+from . import np, mp
+
+
 
 def threaded(fn):
     '''
@@ -54,3 +57,4 @@ def pol2cart(rho, phi):
     x = rho * np.cos(phi)
     y = rho * np.sin(phi)
     return x, y
+

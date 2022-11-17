@@ -14,7 +14,6 @@ import serial
 import gui
 from camera import Flea3Cam
 import fictrac_utils as ft_utils
-from BumpBlaster5000.utils import threaded, cart2pol, pol2cart
 
 from BumpBlaster5000 import params
 

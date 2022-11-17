@@ -15,3 +15,6 @@ PL_PC_PARAMS = {
     'func_time': .1,  # buffer size for df/f numerator in seconds (some unit is off here I think)
     'bump_signal_time': 10  # bump plot buffer size in seconds
 }
+
+import socket
+hostname = socket.gethostname()

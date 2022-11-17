@@ -12,68 +12,17 @@ if platform != 'linux':
 
 NP_SHARED_NAME = 'pmt_buffer_array'
 
-#ToDo: change this to shared memory object?
-class BufferFrameIndex:
 
 
-    def __init__(self, initval=0, maxval = 100):
-        self.val = mp.Value('i', initval)
-
-    def increment(self):
-        with self.val.get_lock():
-            self.val.value = (self.val.value+1) % self.maxval
-    
-    @property
-    def value(self):
-        with self.val.get_lock():
-            return self.val.value
-
-class MultiDimBuffer():
-    def __init__(self, shape, name='pmt_buffer', dtype=np.int16,
-                axis_order=None):
-
-        self.name = 'pmt_buffer'
-        self.shape = shape
-        self.dtype = dtype
-        self._size = np.dtype(dtype).itemsize() * np.prod(np.array(shape))
-        
-        self._shm = None
-        self.buffer = None
-        self.creator = False
-
-    def create(self):
-        self._shm = mp.shared_memory.SharedMemory(create=True, size=self._size, name = self.name)
-        self._init_buffer()
-        self.creator = True
-        return self
-
-    def connect(self):
-        if not self.creator:
-            self._shm = mp.shared_memory.SharedMemory(name = self.name)
-        else: 
-            return
-        self._init_buffer()
-        return self
-
-    def _init_buffer(self):
-        self.buffer = np.ndarray(shape=self.shape, dtype=self.dtype, buffer=self._shm.buf)
-        self.buffer[:]=0
-
-    def close(self):
-        self._shm.close()
-        if self.creator:
-            self._shm.unlink()
-
-
-class PMTBuffer(MultiDimBuffer):
+class PMTBuffer():
     #ToDo: change to not inherit but to instantiate two buffers 
     # (1 for buffer, 1 for index) and overload methods
-    def __init__(self, shape,frame_sync = None, name='pmt_buffer', dtype=np.int16, axis_order=None,
+    def __init__(self, shape, names=None, dtype=np.int16, axis_order=None,
                 resonant = True):
-        super().__init__(shape, name, dtype, axis_order)
+        # super().__init__(shape, name, dtype, axis_order)
 
-        if frame_sync is None:
-            self.frame_sync = BufferFrameIndex(maxval=shape[0])
+        if names is None:
+            self.names = {'buffer':'pmt_buffer','frame_sync':'frame_sync'}
         
         
         self.axis_order = ('buffer length',
@@ -92,6 +41,13 @@ class PMTBuffer(MultiDimBuffer):
         self.samples_per_frame = np.prod(shape[2:])
 
         self.curr_flat_index = 0
+
+        self._buffer_inst = None
+        self._frame_sync_inst = None
+
+    def create(self):
+
+
 
     def update_buffer(self, n_samples, flat_data):
 
