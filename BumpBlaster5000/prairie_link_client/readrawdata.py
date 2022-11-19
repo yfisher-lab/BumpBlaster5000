@@ -92,7 +92,6 @@ class PMTBuffer():
 
         n_new_frames, new_flat_index = divmod(self.curr_flat_index+n_samples, 
                                             self.samples_per_frame)
-        
         if n_new_frames == 0:
             sub_mat = self.buffer[self.buffer_index,self.z_index,:,:,:,:]
             fill_frame(self.curr_flat_index,new_flat_index, flat_data)
@@ -130,11 +129,10 @@ class PMTBuffer():
     
     @property
     def latest_full_zstack(self):
-        return 
+        return self.buff[self.buffer_index-1,:,:,:,:,:]
     
-    @property
-    def latest_n_zstacks(self, n):
-        return
+    def latest_n_zstacks(self, n=8):
+        return self.buff[range(self.buffer_index-1-n,self.buffer_index-1),:,:,:,:,:]
 
 # Only 1 instance of Prairie Link can be open
 class RealTimePrairieLinkHandler:
@@ -147,6 +145,8 @@ class RealTimePrairieLinkHandler:
         self.n_slices = 1 #ToDo: send this information from 
         self.n_stacks_to_buffer = 100
         self._raw_dtype = np.int16
+        
+        # ToDo: setattr kwargs
         
         if np_shared_name is None:
             self.np_shared_name = NP_SHARED_NAME
@@ -167,6 +167,8 @@ class RealTimePrairieLinkHandler:
         BUFFER = ctypes.c_int * self._buffer_size
         self._pl_raw_buffer = BUFFER(*[0 for i in range(self._buffer_size)])
         self._pl_raw_buffer_addr = ctypes.addressof(self._pl_raw_buffer)
+        self._np_raw_buffer = np.ctypeslib.as_array(self._plt_raw_buffer)
+        self._np_buffer_local = np.zeros(self._np_raw_buffer.shape)
         
         self.pmt_buff_shape = (self.n_stacks_to_buffer,
                       self.n_slices,
@@ -181,7 +183,6 @@ class RealTimePrairieLinkHandler:
                                 'sample',
                                 'pmt')
 
-        self.plot_frame_index = BufferFrameIndex(maxval=self.n_stacks_to_buffer)
         # update to incorporate synchronized frame index
         self.pmt_buffer = PMTBuffer(self.pmt_buff_shape).create().buffer
         
@@ -197,53 +198,15 @@ class RealTimePrairieLinkHandler:
         self._pl.SendScriptCommands('-srd False')
         # read data stream until no bytes are returned
 
-        # unlink shared memory object
+        # unlink and destroy shared memory object
+        self.pmt_buffer.close()
 
-        # destroy shared memory object
-
-
-
-        
-
-    def update():
-        pass
-        # check queue
-        # if prairie link command in queue
-        #   send command
-        # read raw data stream
-
-
-
-
-    def terminate_data_streaming(self):
-
-        self._pl.SendScriptCommands('-srd False')
-        # read data stream until no bytes are returned
-
-        # unlink shared memory object
-
-        # destroy shared memory object
-
-    
-    def process_pl_commands(self):
-        # if prairie link command queue length>0:
-        # send prairie link commands
-        raise NotImplementedError
-        
-
-    def read_data_stream(self):
-        return self._pl.ReadRawDataStream_3(self.pid, self.buffer_address, self.buffer_size)
-
-    def data_stream_to_pmt_buffer(self):
-        last_index
-        num_samples = self.read_data_stream()
-
-        # each time a zstack is filled increment a shared counter 
-        # that keeps track of where in the buffer we are
-
-        number_of_new_frames, remaining_samples = divmod(last_index+num_samples,)
-
-   
+    def update(self):
+        if not self.pl_command_queue.empty():
+            self._pl.SendScriptCommands(self.pl_command_queue.get())
+        n_samples = self.read_data_stream()
+        self._np_buffer_local[:n_samples]= self._np_raw_buffer[:n_samples]
+        self.pmt_buffer.update_buffer(n_samples, np.copy(self._np_buffer_local))
 
 
 
