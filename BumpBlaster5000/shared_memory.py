@@ -24,7 +24,7 @@ class SharedPeriodicCounter:
             self.val.value = (self.val.value+1) % self.maxval
     
     def decrement(self):
-        """process safe decrement counter. Also wraps to maxval if counter 
+        """proce ss safe decrement counter. Also wraps to maxval if counter 
         goes negative
         """
         with self.val.get_lock():

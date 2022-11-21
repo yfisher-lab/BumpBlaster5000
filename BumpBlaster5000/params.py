@@ -4,6 +4,7 @@ FT_PC_PARAMS = {
     'pl_widget_com': 'COM13',
     'baudrate': 115200,  # check that this will work
     'flea3_serial': 13192198,
+    'empty': []
 }
 
 PL_PC_PARAMS = {
