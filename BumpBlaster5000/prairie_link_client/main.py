@@ -13,9 +13,11 @@ from PyQt5.QtWidgets import QApplication
 import pyqtgraph as pg
 import serial
 
-# from BumpBlaster5000.prairie_link_client import plugin_viewer
-from utils import pol2cart, cart2pol, threaded
-# from BumpBlaster5000 import params
+
+from . import plugin_viewer
+from ..utils import pol2cart, cart2pol, threaded
+from .. import params
+
 
 if params.hostname:
     import win32com.client

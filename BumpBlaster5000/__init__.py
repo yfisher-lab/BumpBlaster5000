@@ -5,5 +5,7 @@ from . import params, shared_memory, utils
 
 if params.hostname == 'bard-smaug-slayer':
     pass
+elif params.hostname == 'SMAUG':
+    from . import prairie_link_client
 else:
-    from . import prairie_link_client, son_of_jackfish
+    from . import son_of_jackfish

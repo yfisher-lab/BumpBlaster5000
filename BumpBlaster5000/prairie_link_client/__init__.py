@@ -1,2 +1,5 @@
+
+from . import main, plugin_viewer, read_raw_data
 from .. import utils, shared_memory, params
-from . import main, plugin_viewer, readrawdata
+
+print(params.hostname)
