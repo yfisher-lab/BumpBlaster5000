@@ -229,7 +229,7 @@ class PMTBuffer:
     def update_buffer(self, n_samples, flat_data):
 
         def fill_frame(start, stop, data_slice):
-            lines, columns, samples, pmts = np.unravel_index(np.arange(start, stop))
+            lines, columns, samples, pmts = np.unravel_index(np.arange(start, stop), sub_mat.shape)
             sub_mat[lines, columns, samples, pmts] = data_slice
 
         n_new_frames, new_flat_index = divmod(self.curr_flat_index + n_samples,

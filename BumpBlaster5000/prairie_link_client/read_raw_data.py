@@ -20,9 +20,10 @@ class RealTimePrairieLinkHandler:
         self.n_slices = 1  # ToDo: send this information from prairie_link_client
         self.n_zstacks_to_buffer = 100
         self._raw_dtype = np.int16
-        self._n_raw_buffer_frames = 500
+        self._n_raw_buffer_frames = 50
 
-        self._pl = self.open_praire_link()
+        self._pl = None
+        self.open_praire_link()
         self.lines_per_frame = self._pl.LinesPerFrame()
         self.pixels_per_line = self._pl.PixelsPerLine()
         self.samples_per_pixel = self._pl.SamplesPerPixel()
@@ -43,9 +44,10 @@ class RealTimePrairieLinkHandler:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-    @staticmethod
-    def open_praire_link():
-        return win32com.client.Dispatch("PrairieLink64.Application")
+
+    def open_praire_link(self):
+        self._pl = win32com.client.Dispatch("PrairieLink64.Application")
+        self._pl.Connect('127.0.1.1')
 
     def _initialize_streaming_buffers(self):
         self._buffer_size = self.samples_per_frame * self._n_raw_buffer_frames
@@ -75,8 +77,9 @@ class RealTimePrairieLinkHandler:
 
     def stream_data(self):
         # get buffer address
-        self._pl.SendScriptScriptCommands(f"-srd True {self._n_raw_buffer_frames}")
-
+        print(f"-srd True {self._n_raw_buffer_frames}")
+        self._pl.SendScriptCommands(f"-srd True {self._n_raw_buffer_frames}")
+        self._initialize_streaming_buffers()
         while self.remote_streaming_flag.is_set():
             self.update()
 
