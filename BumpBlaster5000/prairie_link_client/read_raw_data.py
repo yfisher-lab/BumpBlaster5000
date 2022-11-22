@@ -1,10 +1,9 @@
 import os
-import multiprocessing as mp
 import ctypes
 
 import numpy as np
 
-from .. import params, shared_memory
+from .. import params
 from ..shared_memory import PMTBuffer
 
 if params.hostname != 'bard-smaug-slayer':
@@ -14,36 +13,51 @@ if params.hostname != 'bard-smaug-slayer':
 # Only 1 instance of Prairie Link can be open
 class RealTimePrairieLinkHandler:
 
-    def __init__(self, pl_command_queue, *kwargs) -> None:
+    def __init__(self, remote_streaming_flag, pl_command_queue, **kwargs) -> None:
 
         self._pid = os.getpid()
         self._n_pmts = 2
-        self.n_slices = 1  # ToDo: send this information from
-        self.n_stacks_to_buffer = 100
+        self.n_slices = 1  # ToDo: send this information from prairie_link_client
+        self.n_zstacks_to_buffer = 100
         self._raw_dtype = np.int16
+        self._n_raw_buffer_frames = 500
 
+        self._pl = self.open_praire_link()
         self.lines_per_frame = self._pl.LinesPerFrame()
         self.pixels_per_line = self._pl.PixelsPerLine()
         self.samples_per_pixel = self._pl.SamplesPerPixel()
         self.samples_per_frame = int(self._n_pmts * self.lines_per_frame * \
                                      self.pixels_per_line * self.samples_per_pixel)
+
+        self.remote_streaming_flag = remote_streaming_flag
         self.pl_command_queue = pl_command_queue
-        for k, v in kwargs:
+
+        self._buffer_size = None
+        self._pl_raw_buffer = None
+        self._pl_raw_buffer_addr = None
+        self._np_raw_buffer = None
+        self._np_buffer_local = None
+        self.pmt_buff_shape = None
+        self.pmt_buff_axis_order = None
+        self.pmt_buffer = None
+        for k, v in kwargs.items():
             setattr(self, k, v)
 
-    def open_praire_link(self):
-        self._pl = win32com.client.Dispatch("PrairieLink64.Application")
-        return self
+    @staticmethod
+    def open_praire_link():
+        return win32com.client.Dispatch("PrairieLink64.Application")
 
     def _initialize_streaming_buffers(self):
-        self._buffer_size = self.samples_per_frame * self._n_buffer_frames
-        BUFFER = ctypes.c_int * self._buffer_size
-        self._pl_raw_buffer = BUFFER(*[0 for i in range(self._buffer_size)])
+        self._buffer_size = self.samples_per_frame * self._n_raw_buffer_frames
+        self._np_raw_buffer = np.zeros((self._buffer_size,), dtype=int)
+        self._pl_raw_buffer = np.ctypeslib.as_ctypes(self._np_raw_buffer)
+        # _buffer = ctypes.c_int * self._buffer_size
+        # self._pl_raw_buffer = _buffer(*[0 for i in range(self._buffer_size)])
         self._pl_raw_buffer_addr = ctypes.addressof(self._pl_raw_buffer)
-        self._np_raw_buffer = np.ctypeslib.as_array(self._plt_raw_buffer)
-        self._np_buffer_local = np.zeros(self._np_raw_buffer.shape)
+        # self._np_raw_buffer = np.ctypeslib.as_array(self._pl_raw_buffer)
+        self._np_buffer_local = self._np_raw_buffer.copy()
 
-        self.pmt_buff_shape = (self.n_stacks_to_buffer,
+        self.pmt_buff_shape = (self.n_zstacks_to_buffer,
                                self.n_slices,
                                self.lines_per_frame,
                                self.pixels_per_line,
@@ -57,11 +71,11 @@ class RealTimePrairieLinkHandler:
                                     'pmt')
 
         # update to incorporate synchronized frame index
-        self.pmt_buffer = PMTBuffer(self.pmt_buff_shape).create().buffer
+        self.pmt_buffer = PMTBuffer(self.pmt_buff_shape, dtype=self._raw_dtype).create()
 
     def stream_data(self):
         # get buffer address
-        self._pl.SendScriptScriptCommands(f"-srd True {self.n_buffer_frames}")
+        self._pl.SendScriptScriptCommands(f"-srd True {self._n_raw_buffer_frames}")
 
         while self.remote_streaming_flag.is_set():
             self.update()
@@ -76,5 +90,7 @@ class RealTimePrairieLinkHandler:
         if not self.pl_command_queue.empty():
             self._pl.SendScriptCommands(self.pl_command_queue.get())
         n_samples = self.read_data_stream()
-        self._np_buffer_local[:n_samples] = self._np_raw_buffer[:n_samples]
-        self.pmt_buffer.update_buffer(n_samples, np.copy(self._np_buffer_local))
+        self.pmt_buffer.update_buffer(n_samples, self._np_raw_buffer[:n_samples])
+
+    def read_data_stream(self):
+        return self._pl.ReadRawDataStream_3(self._pid, self._pl_raw_buffer_addr, self._buffer_size)

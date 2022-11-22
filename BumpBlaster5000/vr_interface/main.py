@@ -16,6 +16,7 @@ from camera import Flea3Cam
 import fictrac_utils as ft_utils
 
 from BumpBlaster5000 import params
+from ..utils import threaded
 
 
 class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
@@ -36,7 +37,7 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.cam_view = False
 
         ## fictrac
-        self.ft_manager = ft_utils.FicTracSocketManager_wPhidget()  # add arguments
+        self.ft_manager = ft_utils.FicTracSocketManager()  # add arguments
         self.ft_frames = None
         self.launch_fictrac_toggle.stateChanged.connect(self.toggle_fictrac)
 

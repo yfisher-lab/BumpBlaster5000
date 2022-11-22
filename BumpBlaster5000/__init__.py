@@ -8,4 +8,4 @@ if params.hostname == 'bard-smaug-slayer':
 elif params.hostname == 'SMAUG':
     from . import prairie_link_client
 else:
-    from . import son_of_jackfish
+    from . import vr_interface

@@ -6,7 +6,7 @@ from . import mp, np
 
 class SharedPeriodicCounter:
 
-    def __init__(self, initval=0, maxval = 100):
+    def __init__(self, initval=0, maxval=100):
         """process-safe shared periodic counter
 
         Args:
@@ -21,8 +21,8 @@ class SharedPeriodicCounter:
         """process safe increment counter
         """
         with self.val.get_lock():
-            self.val.value = (self.val.value+1) % self.maxval
-    
+            self.val.value = (self.val.value + 1) % self.maxval
+
     def decrement(self):
         """proce ss safe decrement counter. Also wraps to maxval if counter 
         goes negative
@@ -31,7 +31,7 @@ class SharedPeriodicCounter:
             self.val.value -= 1
             if self.val.value < 0:
                 self.val.value = self.maxval + 1 - self.val.value
-    
+
     @property
     def value(self):
         """getter for value property
@@ -45,7 +45,7 @@ class SharedPeriodicCounter:
 
 class SharedArray:
     def __init__(self, shape: tuple, name='buffer', dtype=np.int16):
-        
+
         """wrapper class for multiprocessing.shared_memory.SharedMemory.
         Implements a process-safe shared memory object of given shape, 
         data type and name. This class can be used by the creating process 
@@ -56,20 +56,20 @@ class SharedArray:
             name (str, optional): name of memory object. Defaults to 'buffer'.
             dtype (_type_, optional): numpy datatype for array. Defaults to np.int16.
         """
-        
+
         self.name = name
         self.shape = shape
         self.dtype = dtype
-        self._size = np.dtype(dtype).itemsize * np.prod(np.array(shape))
-        
+        self._size = int(np.dtype(dtype).itemsize * np.prod(np.array(shape)))
+
         self._shm = None
         self.buff = None
         self._creator = False
-        
+
     def __del__(self):
         self.close(suppress_warning=True)
 
-    def create(self, inplace = False):
+    def create(self, inplace=False):
         """create shared memory object and initialize the buffer
 
         Args:
@@ -79,19 +79,19 @@ class SharedArray:
         Returns:
             _type_: self reference for cascading
         """
-        
+
         try:
-            self._shm = mp.shared_memory.SharedMemory(create=True, size=self._size, name = self.name)
+            self._shm = mp.shared_memory.SharedMemory(create=True, size=self._size, name=self.name)
         except FileExistsError:
             raise Exception(f"Shared memory object name '{self.name}' already exists. \
                             Pick a different name")
         self._init_buffer()
-        self.buff[:]=0
+        self.buff[:] = 0
         self._creator = True
         if not inplace:
             return self
 
-    def connect(self, inplace = False, read_only=True):
+    def connect(self, inplace=False, read_only=True):
         """ connect to an existing shared memory object and connect array
 
         Args:
@@ -102,16 +102,16 @@ class SharedArray:
         Returns:
             _type_: self reference for cascading
         """
-        
+
         if not self._creator:
             try:
-                self._shm = mp.shared_memory.SharedMemory(name = self.name)
+                self._shm = mp.shared_memory.SharedMemory(name=self.name)
             except FileNotFoundError:
                 raise Exception(f"Shared memory object named '{self.name}' does not exist")
-        else: 
+        else:
             warn("This process is the creator. Re-initializing buff")
             return
-        
+
         self._init_buffer()
         if read_only:
             self.buff.setflags(write=False)
@@ -123,16 +123,16 @@ class SharedArray:
         """
         self.buff = np.ndarray(shape=self.shape, dtype=self.dtype, buffer=self._shm.buf)
 
-    def close(self, suppress_warning = False):
+    def close(self, suppress_warning=False):
         """gracefully disconnect form memory object 
         """
-        
+
         if self._shm is None:
             if not suppress_warning:
                 warn('Instance of memory object does not exist. Either never created ' + \
-                    'or already closed')
+                     'or already closed')
             return
-        
+
         self._shm.close()
         if self._creator:
             self._shm.unlink()
@@ -164,8 +164,9 @@ class PMTBuffer:
             self.names = {'buffer': 'pmt_buffer',
                           'frame_sync': 'frame_sync'}
 
+
         # check that buffer and frame_sync are in keys
-        if not isinstance(names, dict):
+        if not isinstance(self.names, dict):
             raise Exception("names must be a dict with keys 'buffer' and 'frame_sync' ")
         if not ('buffer' in self.names.keys() and 'frame_sync' in self.names.keys()):
             raise Exception("names must contain keys 'buffer' and 'frame_sync'")
@@ -192,29 +193,31 @@ class PMTBuffer:
     def create(self):
 
         self._buffer_inst = SharedArray(self.shape,
-                                        name=self.names['pmt_buffer'],
+                                        name=self.names['buffer'],
                                         dtype=self.dtype).create()
         self.buff = self._buffer_inst.buff
 
         self._frame_sync_inst = SharedArray((1,),
-                                            name=self.names['current_frame'],
+                                            name=self.names['frame_sync'],
                                             dtype=int).create()
         self.frame_sync = self._frame_sync_inst.buff
 
         self._creator = True
+        return self
 
     def connect(self):
         self._buffer_inst = SharedArray(self.shape,
-                                        name=self.names['pmt_buffer'],
+                                        name=self.names['buffer'],
                                         dtype=self.dtype).connect()
         self.buff = self._buffer_inst.buff
 
-        self._frame_sync_inst = SharedArray((1, ),
-                                            name=self.names['current_frame'],
+        self._frame_sync_inst = SharedArray((1,),
+                                            name=self.names['frame_sync'],
                                             dtype=int).connect()
         self.frame_sync = self._frame_sync_inst.buff
 
         self._creator = False
+        return self
 
     def close(self, suppress_warning=False):
         self._buffer_inst.close(suppress_warning=suppress_warning)
@@ -250,7 +253,8 @@ class PMTBuffer:
                 self.curr_flat_index = 0
 
                 # reverse odd lines to deal with resonant mirror
-                sub_mat[:, :, :, :] = sub_mat[:, ::-1, :, :]
+                if self.resonant:
+                    sub_mat[:, :, :, :] = sub_mat[:, ::-1, :, :]
 
                 # update z_index
                 new_buff_ind, self.z_index = divmod(self.z_index + 1, self.max_z_index)
@@ -260,10 +264,7 @@ class PMTBuffer:
 
             fill_frame(self.curr_flat_index, new_flat_index, flat_data[flat_data_idx:])
 
-
-
-    @property
-    def latest_full_zstack(self):
+    def latest_zstack(self):
         return self.buff[self.buffer_index - 1, :, :, :, :, :]
 
     def latest_n_zstacks(self, n=8):
