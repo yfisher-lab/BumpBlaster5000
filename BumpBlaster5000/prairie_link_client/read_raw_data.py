@@ -49,9 +49,12 @@ class RealTimePrairieLinkHandler:
         self._pl = win32com.client.Dispatch("PrairieLink64.Application")
         self._pl.Connect('127.0.1.1')
 
+    def close_prairie_link(self):
+        self._pl.Disconnect()
+
     def _initialize_streaming_buffers(self):
         self._buffer_size = self.samples_per_frame * self._n_raw_buffer_frames
-        self._np_raw_buffer = np.zeros((self._buffer_size,), dtype=int)
+        self._np_raw_buffer = np.zeros((self._buffer_size,), dtype=np.int16)
         self._pl_raw_buffer = np.ctypeslib.as_ctypes(self._np_raw_buffer)
         # _buffer = ctypes.c_int * self._buffer_size
         # self._pl_raw_buffer = _buffer(*[0 for i in range(self._buffer_size)])
@@ -93,7 +96,10 @@ class RealTimePrairieLinkHandler:
         if not self.pl_command_queue.empty():
             self._pl.SendScriptCommands(self.pl_command_queue.get())
         n_samples = self.read_data_stream()
-        self.pmt_buffer.update_buffer(n_samples, self._np_raw_buffer[:n_samples])
+        if n_samples>0:
+            print(n_samples)
+
+            self.pmt_buffer.update_buffer(n_samples, np.copy(self._np_raw_buffer[:n_samples]))
 
     def read_data_stream(self):
         return self._pl.ReadRawDataStream_3(self._pid, self._pl_raw_buffer_addr, self._buffer_size)
