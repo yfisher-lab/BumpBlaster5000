@@ -14,9 +14,10 @@ import pyqtgraph as pg
 import serial
 
 
-from . import plugin_viewer
-from ..utils import pol2cart, cart2pol, threaded
-from .. import params
+import plugin_viewer
+import BumpBlaster5000
+from BumpBlaster5000.utils import pol2cart, cart2pol, threaded
+from BumpBlaster5000 import params
 
 
 if params.hostname:
@@ -116,9 +117,9 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.ch2StaticChanButton.setChecked(True)
 
 
-        # self.streamDataCheckBox.stateChanged.connect(self.set_streaming)
-        # self.streamDataCheckBox.setCheckable(False)
-        # self._stream_bump = False
+        self.streamDataCheckBox.stateChanged.connect(self.set_streaming)
+        self.streamDataCheckBox.setCheckable(False)
+        self._stream_bump = False
         self._bump_signal = None
         self._bump_mag = None
         self._bump_phase = None
@@ -140,7 +141,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
 
         self.frame_timer = QtCore.QTimer()
         self.frame_timer.timeout.connect(self.frame_update)
-        self.frame_timer.start(self._frame_period)
+        self.frame_timer.start() #self._frame_period)
 
     @threaded
     def continuous_read_teensy_pl_commands(self):
@@ -208,10 +209,10 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         :return:
         '''
         # TODO: check this output, change to ms if necessary and round to int
-        self._frame_period = np.float(self.pl.GetState("framePeriod"))
+        self._frame_period = float(self.pl.GetState("framePeriod"))
         if reset_timer:
             self.frame_timer.stop()
-            self.frame_timer.start(self._frame_period)
+            self.frame_timer.start() #self._frame_period)
 
     def set_ch1_active(self):
         '''
@@ -694,18 +695,18 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         elif self.rois['type'] == 'PB':
             raise NotImplementedError
 
-    # def _update_bump(self):
-    #     '''
-    #     update bump calculation for each frame
-    #     :return:
-    #     '''
+    def _update_bump(self):
+        '''
+        update bump calculation for each frame
+        :return:
+        '''
 
-    #     if self._stream_bump:
-    #         self._apply_roi_masks()
-    #         self._calc_bump_phase()
-    #         self._plot_bump()
-    #     else:
-    #         return
+        if self._stream_bump:
+            self._apply_roi_masks()
+            self._calc_bump_phase()
+            self._plot_bump()
+        else:
+            return
 
     def _apply_roi_masks(self):
         '''

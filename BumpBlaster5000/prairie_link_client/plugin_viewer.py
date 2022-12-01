@@ -271,12 +271,7 @@ class Ui_MainWindow(object):
         self.ch1StaticChanButton.setIconSize(QtCore.QSize(60, 60))
         self.ch1StaticChanButton.setObjectName("ch1StaticChanButton")
         self.staticChButtonGroup.addButton(self.ch1StaticChanButton)
-        # self.functionalChReset = QtWidgets.QPushButton(self.centralwidget)
-        # self.functionalChReset.setGeometry(QtCore.QRect(660, 520, 71, 31))
-        # self.functionalChReset.setObjectName("functionalChReset")
-        # self.staticChReset = QtWidgets.QPushButton(self.centralwidget)
-        # self.staticChReset.setGeometry(QtCore.QRect(660, 570, 71, 31))
-        # self.staticChReset.setObjectName("staticChReset")
+
         self.viewChsLabel = QtWidgets.QLabel(self.centralwidget)
         self.viewChsLabel.setGeometry(QtCore.QRect(20, 150, 221, 33))
         palette = QtGui.QPalette()
@@ -404,4 +399,4 @@ class Ui_MainWindow(object):
         self.roiIndexLabel.setText(_translate("MainWindow", "ROI #"))
         self.label_2.setText(_translate("MainWindow", "Time"))
 
-# from pyqtgraph import PlotWidget
+from pyqtgraph import PlotWidget

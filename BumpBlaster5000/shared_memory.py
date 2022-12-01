@@ -166,7 +166,6 @@ class PMTBuffer:
             self.names = {'buffer': 'pmt_buffer',
                           'frame_sync': 'frame_sync'}
 
-
         # check that buffer and frame_sync are in keys
         if not isinstance(self.names, dict):
             raise Exception("names must be a dict with keys 'buffer' and 'frame_sync' ")
@@ -183,7 +182,7 @@ class PMTBuffer:
         self.max_z_index = shape[1]
 
         self.samples_per_frame = np.prod(shape[2:])
-        self.current_frame = np.zeros((self.samples_per_frame,), dtype = self.dtype)
+        self.current_frame = np.zeros((self.samples_per_frame,), dtype=self.dtype)
 
         self.curr_flat_index = 0
 
@@ -235,79 +234,48 @@ class PMTBuffer:
         n_new_frames, new_flat_index = divmod(self.curr_flat_index + n_samples,
                                               self.samples_per_frame)
 
-        if n_new_frames==0:
+        # print(f"n_samples: {n_samples}, n_new_frames: {n_new_frames}, "
+        #       f"curr_index: {self.curr_flat_index}, new_index: {new_flat_index}")
+
+        if n_new_frames == 0:
             self.current_frame[self.curr_flat_index:new_flat_index] = flat_data
             self.curr_flat_index = new_flat_index
         else:
+
             flat_data_idx = 0
+            # print(f"looping frames")
             for frame in range(n_new_frames):
                 frame_size = self.samples_per_frame - self.curr_flat_index
                 new_flat_data_idx = flat_data_idx + frame_size
 
                 self.current_frame[self.curr_flat_index:] = flat_data[flat_data_idx:new_flat_data_idx]
-                self.njit_fill_frame()
+                self.buff[self.buffer_index, self.z_index, :, :, :, :] = njit_fill_frame(self.current_frame,
+                                                                                              self.shape[2:])
+                # update z_index
+                new_buff_ind, self.z_index = divmod(self.z_index + 1, self.max_z_index)
+
+                # update
+                self.buffer_index = (self.buffer_index + new_buff_ind) % self.max_buffer
+                self.curr_flat_index = 0
+
                 flat_data_idx = new_flat_data_idx
-
-            self.current_frame[:flat_data_idx] = flat_data[flat_data_idx:]
-            self.curr_flat_index = flat_data_idx
-            # fill_frame(self.curr_flat_index, new_flat_index, flat_data[flat_data_idx:])
-
-
-
-    @njit
-    def njit_fill_frame(self, current_frame):
-        self.buff[self.buffer_index, self.z_index, :, :, :, :] = self.current_frame.reshape(self.shape[2:])
-
-        # update z_index
-        new_buff_ind, self.z_index = divmod(self.z_index + 1, self.max_z_index)
-
-        # update
-        self.buffer_index = (self.buffer_index + new_buff_ind) % self.max_buffer
-        self.curr_flat_index = 0
-
-
-
-
-
-        # def fill_frame(start, stop, data_slice):
-        #     lines, columns, samples, pmts = np.unravel_index(np.arange(start, stop), sub_mat.shape)
-        #     sub_mat[lines, columns, samples, pmts] = data_slice
+                print(f"z index: {self.z_index}, ")
+                # print(f"n_samples: {n_samples}, flat_data_idx = {new_flat_data_idx}")
         #
         #
-        # print(f"n_new_frames: {n_new_frames}, new flat index: {new_flat_index}")
-        #
-        # if n_new_frames == 0:
-        #     sub_mat = self.buff[self.buffer_index, self.z_index, :, :, :, :]
-        #     fill_frame(self.curr_flat_index, new_flat_index, flat_data)
-        # else:
-        #     flat_data_idx = 0
-        #     for frame in range(n_new_frames):
-        #         sub_mat = self.buff[self.buffer_index, self.z_index, :, :, :, :]
-        # #
-        #         frame_size = self.samples_per_frame - self.curr_flat_index
-        #         new_flat_data_idx = flat_data_idx + frame_size
-        #         # fill frame
-        #         tmp_data = flat_data[flat_data_idx:new_flat_data_idx]
-        #         fill_frame(self.curr_flat_index, self.samples_per_frame, tmp_data)
-        #
-        #         # set curr_flat index to 0
-        #         flat_data_idx = new_flat_data_idx
-        #         self.curr_flat_index = 0
-        #
-        #         # reverse odd lines to deal with resonant mirror
-        #         if self.resonant:
-        #             sub_mat[1::2, :, :, :] = sub_mat[1::2, ::-1, :, :]
-        #
-        #         # update z_index
-        #         new_buff_ind, self.z_index = divmod(self.z_index + 1, self.max_z_index)
-        #
-        #         # update
-        #         self.buffer_index = (self.buffer_index + new_buff_ind) % self.max_buffer
-        #
-            fill_frame(self.curr_flat_index, new_flat_index, flat_data[flat_data_idx:])
+            self.curr_flat_index = int(n_samples-flat_data_idx)
+            self.current_frame[:self.curr_flat_index] = flat_data[flat_data_idx:]
+
 
     def latest_zstack(self):
         return self.buff[self.buffer_index - 1, :, :, :, :, :]
 
     def latest_n_zstacks(self, n=8):
         return self.buff[range(self.buffer_index - 1 - n, self.buffer_index - 1), :, :, :, :, :]
+
+
+@njit
+def njit_fill_frame(current_frame, shape, resonant = True):
+    frame_rs = current_frame.reshape(shape)
+    frame_rs[1::2, :, :, :] = frame_rs[1::2, ::-1, :, :]
+    return frame_rs

@@ -48,6 +48,7 @@ class RealTimePrairieLinkHandler:
     def open_praire_link(self):
         self._pl = win32com.client.Dispatch("PrairieLink64.Application")
         self._pl.Connect('127.0.1.1')
+        self._pl.SendScriptCommands("-srd False")
 
     def close_prairie_link(self):
         self._pl.Disconnect()
@@ -97,8 +98,6 @@ class RealTimePrairieLinkHandler:
             self._pl.SendScriptCommands(self.pl_command_queue.get())
         n_samples = self.read_data_stream()
         if n_samples>0:
-            print(n_samples)
-
             self.pmt_buffer.update_buffer(n_samples, np.copy(self._np_raw_buffer[:n_samples]))
 
     def read_data_stream(self):
