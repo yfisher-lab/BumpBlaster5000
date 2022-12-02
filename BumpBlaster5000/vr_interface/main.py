@@ -64,8 +64,8 @@ class FLUI(QtWidgets.QMainWindow, gui.Ui_MainWindow):
         self.teensy_queue_eater_handle = self.consume_queue()
 
         # initialize fly orientation plot
-        # ToDo: add checkbox for whether or not to have orientation plot
-        # ToDo: connect checkbox to function that launches process
+        # ToDo: make this a plot of cumulative trajectory
+        # ToDo: send orientation info to smaug
 
         self.fly_theta = np.pi / 2.
         self.fly_speed = 0.
