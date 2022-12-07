@@ -12,7 +12,7 @@ import pyqtgraph as pg
 import serial
 
 import gui
-from camera import Flea3Cam
+from .camera import Flea3Cam
 import fictrac_utils as ft_utils
 
 from BumpBlaster5000 import params

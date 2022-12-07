@@ -1,9 +1,10 @@
 from warnings import warn
+from . import mp, np
 import multiprocessing.shared_memory
 
 from numba import njit
 
-from . import mp, np
+
 
 
 class SharedPeriodicCounter:
