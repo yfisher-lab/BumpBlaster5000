@@ -273,4 +273,3 @@ class FicTracSocketManager:
         # (see https://github.com/rjdmoore/fictrac/blob/master/doc/data_header.txt for descriptions)
         return {k: toks[v] for k, v in self.columns_to_read.items()}
 
-# TODO: add function for sending heading info to prairie 

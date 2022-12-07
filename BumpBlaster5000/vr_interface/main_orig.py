@@ -6,21 +6,20 @@ import time
 import sys
 
 import numpy as np
-from PySide2 import QtCore, QtGui, QtWidgets, QRect
-from PySide2.QtWidgets import QApplication, QFileDialog, QInputDialog
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import QApplication, QFileDialog, QInputDialog
 import pyqtgraph as pg
 import serial
 
-import gui
-from .camera import Flea3Cam
-import ui_gui, params
+import BumpBlaster5000.vr_interface.gui_orig as gui_orig
+from camera import Flea3Cam
 import fictrac_utils as ft_utils
-from utils import threaded
 
-class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
-    
-    
-    
+from BumpBlaster5000 import params
+from ..utils import threaded
+
+
+class FLUI(QtWidgets.QMainWindow, gui_orig.Ui_MainWindow):
     def __init__(self, parent=None):
         super(FLUI, self).__init__(parent)
         self.setupUi(self)
@@ -32,20 +31,22 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
         self.start_scan_push.clicked.connect(self.start_scan)
         self.stop_scan_push.clicked.connect(self.stop_scan)
         self.trigger_opto_push.clicked.connect(self.trigger_opto)
-        
+
+        ## camera preview
+        self.cam_view_toggle.stateChanged.connect(self.toggle_cam_view)
+        self.cam_view = False
+
         ## fictrac
         self.ft_manager = ft_utils.FicTracSocketManager()  # add arguments
         self.ft_frames = None
         self.launch_fictrac_toggle.stateChanged.connect(self.toggle_fictrac)
-        self.save_fictrac_toggle.stateChanged.connect(self.set_fictrac_save_path)
-        self.send_orientation_toggle.stateChanged.connect(self.send_orientation)
-        
 
         ## set data output directory
         # TODO: force path to be set
-        self.exp_filepath_push.clicked.connect(self.set_exp)
-        self.run_exp_push.clicked.connect(self.run_exp)
-        self.abort_exp_push.clicked.connect(self.abort_exp)
+        self.set_path_push.clicked.connect(self.set_path)
+        self.filepath = ""
+        self.expt_name = ""
+        self.exp_path = os.environ['USERPROFILE']
 
 
         # start serial port to send commands to teensy
@@ -56,38 +57,42 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
 
         # start thread to read outputs from teensy
         self._isreading_teensy = threading.Event()
-        self.teensy_read_queue = queue.SimpleQueue()
+        self.teensy_read_queue = queue.Queue()
         self.teensy_read_handle = self.continuous_read()
         while not self._isreading_teensy.is_set():
             time.sleep(.01)
         self.teensy_queue_eater_handle = self.consume_queue()
 
-        # change plot widgets to remote graphics views()
-        self.cumm_path_plotwidget = pg.widgets.RemoteGraphicsView.RemoteGraphicsView(self.centralwidget)
-        self.cumm_path_plotwidget.setObjectName(u"cumm_path_plotwidget")
-        self.cumm_path_plotwidget.setGeometry(QRect(30, 200, 321, 231))
-        self.cumm_path_plotitem = self.config_remote_plot(self.cumm_path_plotwidget)
-        
-        self.heading_occ_plotwidget = pg.widgets.RemoteGraphicsView.RemoteGraphicsView(self.centralwidget)
-        self.heading_occ_plotwidget.setObjectName(u"heading_occ_plotwidget")
-        self.heading_occ_plotwidget.setGeometry(QRect(510, 200, 321, 231))
-        self.heading_occ_plotitem = self.config_remote_plot(self.heading_occ_plotwidget)
-        
-        # 
+        # initialize fly orientation plot
+        # ToDo: make this a plot of cumulative trajectory
+        # ToDo: send orientation info to smaug
+
+        self.fly_theta = np.pi / 2.
+        self.fly_speed = 0.
+        self.fly_orientation_pi = self.fly_orientation_preview.getPlotItem()  # look up usage of pyqtgraph
+        self.fly_orientation_pi.showAxis('left', False)
+        self.fly_orientation_pi.showAxis('bottom', False)
+        self.fly_orientation_pi.setAspectLocked(lock=True, ratio=1)
+        self.fly_orientation_preview.addLine(x=0, pen=0.2)
+        self.fly_orientation_preview.addLine(y=0, pen=0.2)
+        self.fly_orientation_preview.setXRange(-.08, .08)
+        self.fly_orientation_preview.setYRange(-.08, .08)
+        for r in np.arange(.001, .08, .01):
+            circle = pg.QtGui.QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
+            circle.setPen(pg.mkPen(0.2))
+            self.fly_orientation_preview.addItem(circle)
+
+        # Transform to cartesian and plot
+        x = (self.fly_speed + .02) * np.cos(self.fly_theta)
+        y = (self.fly_speed + .02) * np.sin(self.fly_theta)
+        self.fly_orientation_plot = self.fly_orientation_preview.getPlotItem().plot()  # look up usage of pyqtgraph
+        self.fly_orientation_plot.setData([0, x], [0, y], pen=(200, 200, 200), symbolBrush=(255, 0, 0), symbolPen='w')
+        self.fly_orientation_preview.show()
+
+        # TODO: put fictrac and phase offset plot on same timer
         self.plot_update_timer = QtCore.QTimer()
         self.plot_update_timer.timeout.connect(self.update_plots)
         self.plot_update_timer.start()
-    
-    @staticmethod
-    def config_remote_plot(remote_plot_widget):
-        remote_plot_widget.pg.setConfigOptions(antialias = True)
-        plot_item = remote_plot_widget.pg.PlotItem()
-        plot_item._setProxyOptions(deferGetattr=True)
-        plot_item.showAxis('left', False)
-        plot_item.showAxis('bottom', False)
-        remote_plot_widget.setCentralItem(plot_item)
-        return plot_item
-        
 
     def start_scan(self):
         '''
@@ -95,10 +100,17 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
         :return:
         '''
 
+        # if self.ft_manager.ft_subprocess.open_evnt.is_set():
+        #     # if save fictrac
+        #     # set filenames
+        #     self.ft_manager.start_reading()
+
         self.teensy_input_serial.write(b'1,0\n')  # see teensy_control.ino
         self.start_scan_push.setEnabled(False)
         self.trigger_opto_push.setEnabled(True)
         self.stop_scan_push.setEnabled(True)
+
+        # self.cam_timer.stop()
 
         self.ft_frames = {'start': None, 'abort': None}
 
@@ -110,6 +122,9 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
         self.teensy_input_serial.write(b'2,0\n')  # see teensy_control.ino
         while self.ft_frames['abort'] is None:
             time.sleep(.01)
+        #
+        # if self.ft_manager.ft_subprocess.open_evnt.is_set():
+        #     df = self.ft_manager.stop_reading(return_pandas=True)
 
         self.start_scan_push.setEnabled(True)
         self.trigger_opto_push.setEnabled(False)
@@ -287,6 +302,37 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
         else:
             return None
 
+
+    # def bump_plotter(self):
+    #     '''
+
+    #     :return:
+    #     '''
+
+    #     # read bump
+    #     m = self._bump_queue.qsize()
+    #     if m > 0:
+    #         phase, mag = [], []
+    #         for i in range(m):
+    #             _phase, _mag = self._bump_queue.get().split(',')
+    #             phase.append(_phase)
+    #             mag.append(_mag)
+    #         _x , _y = pol2cart(mag,phase)
+    #         x = _x.mean()
+    #         y = _y.mean()
+    #         self.bump_plot.setData([0, x], [0, y])
+    #         return cart2pol(x, y)[1]
+    #     else:
+    #         return None
+
+
+    def offset_plotter(self):
+        '''
+
+        :return:
+        '''
+        self.phase_offset_plot.setData(self._phase_x,self.phase_offset_buffer)
+
     def closeEvent(self, event: QtGui.QCloseEvent):
         '''
 
@@ -311,9 +357,8 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
         self.teensy_input_serial.close()
         self.bump_reader_thread.join()
 
-        self.cumm_path_plotwidget.close()
-        self.heading_occ_plotwidget.close()
-        
+        # close cameras
+        self.cam.stop()
         self.disconnect()
         event.accept()
 
