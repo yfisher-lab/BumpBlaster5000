@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'guiiZfzlR.ui'
+## Form generated from reading UI file 'guiQFDPoH.ui'
 ##
 ## Created by: Qt User Interface Compiler version 5.15.2
 ##
@@ -12,8 +12,7 @@ from PySide2.QtCore import *
 from PySide2.QtGui import *
 from PySide2.QtWidgets import *
 
-import pyqtgraph as pg
-# from pyqtgraph import PlotWidget
+from pyqtgraph import PlotWidget
 
 
 class Ui_MainWindow(object):
@@ -129,7 +128,7 @@ class Ui_MainWindow(object):
         self.trigger_opto_push.setFont(font)
         self.heading_occ_plotwidget = PlotWidget(self.centralwidget)
         self.heading_occ_plotwidget.setObjectName(u"heading_occ_plotwidget")
-        self.heading_occ_plotwidget.setGeometry(QRect(510, 200, 321, 231))
+        self.heading_occ_plotwidget.setGeometry(QRect(490, 220, 321, 231))
         self.exp_filepath_push = QPushButton(self.centralwidget)
         self.exp_filepath_push.setObjectName(u"exp_filepath_push")
         self.exp_filepath_push.setGeometry(QRect(490, 20, 341, 70))
@@ -143,7 +142,7 @@ class Ui_MainWindow(object):
         self.exp_filepath_label.setAlignment(Qt.AlignCenter)
         self.heading_occ_label = QLabel(self.centralwidget)
         self.heading_occ_label.setObjectName(u"heading_occ_label")
-        self.heading_occ_label.setGeometry(QRect(510, 430, 231, 20))
+        self.heading_occ_label.setGeometry(QRect(500, 200, 311, 20))
         self.heading_occ_label.setFont(font)
         self.stop_scan_push = QPushButton(self.centralwidget)
         self.stop_scan_push.setObjectName(u"stop_scan_push")
@@ -154,13 +153,9 @@ class Ui_MainWindow(object):
         self.launch_fictrac_toggle.setObjectName(u"launch_fictrac_toggle")
         self.launch_fictrac_toggle.setGeometry(QRect(40, 120, 121, 23))
         self.launch_fictrac_toggle.setChecked(False)
-        self.save_fictrac_toggle = QCheckBox(self.centralwidget)
-        self.save_fictrac_toggle.setObjectName(u"save_fictrac_toggle")
-        self.save_fictrac_toggle.setGeometry(QRect(170, 120, 121, 23))
-        self.save_fictrac_toggle.setChecked(False)
         self.cumm_path_label = QLabel(self.centralwidget)
         self.cumm_path_label.setObjectName(u"cumm_path_label")
-        self.cumm_path_label.setGeometry(QRect(30, 430, 140, 20))
+        self.cumm_path_label.setGeometry(QRect(70, 200, 231, 20))
         self.cumm_path_label.setFont(font)
         self.send_orientation_toggle = QCheckBox(self.centralwidget)
         self.send_orientation_toggle.setObjectName(u"send_orientation_toggle")
@@ -173,7 +168,13 @@ class Ui_MainWindow(object):
         self.abort_exp_push.setGeometry(QRect(670, 130, 161, 41))
         self.cumm_path_plotwidget = PlotWidget(self.centralwidget)
         self.cumm_path_plotwidget.setObjectName(u"cumm_path_plotwidget")
-        self.cumm_path_plotwidget.setGeometry(QRect(30, 200, 321, 231))
+        self.cumm_path_plotwidget.setGeometry(QRect(30, 220, 321, 231))
+        self.cumm_path_checkbox = QCheckBox(self.centralwidget)
+        self.cumm_path_checkbox.setObjectName(u"cumm_path_checkbox")
+        self.cumm_path_checkbox.setGeometry(QRect(30, 450, 151, 21))
+        self.heading_occ_checkbox = QCheckBox(self.centralwidget)
+        self.heading_occ_checkbox.setObjectName(u"heading_occ_checkbox")
+        self.heading_occ_checkbox.setGeometry(QRect(490, 450, 151, 21))
         MainWindow.setCentralWidget(self.centralwidget)
         self.statusBar = QStatusBar(MainWindow)
         self.statusBar.setObjectName(u"statusBar")
@@ -190,13 +191,14 @@ class Ui_MainWindow(object):
         self.trigger_opto_push.setText(QCoreApplication.translate("MainWindow", u"Trigger Opto Stim", None))
         self.exp_filepath_push.setText(QCoreApplication.translate("MainWindow", u"Load Experiment", None))
         self.exp_filepath_label.setText(QCoreApplication.translate("MainWindow", u"No File Selected", None))
-        self.heading_occ_label.setText(QCoreApplication.translate("MainWindow", u"Heading Occupancy History", None))
+        self.heading_occ_label.setText(QCoreApplication.translate("MainWindow", u"Heading Occupancy History (last 10 min)", None))
         self.stop_scan_push.setText(QCoreApplication.translate("MainWindow", u"Stop Scan ", None))
         self.launch_fictrac_toggle.setText(QCoreApplication.translate("MainWindow", u"Launch Fictrac", None))
-        self.save_fictrac_toggle.setText(QCoreApplication.translate("MainWindow", u"Save Fictrac", None))
-        self.cumm_path_label.setText(QCoreApplication.translate("MainWindow", u"Cumulative Path", None))
+        self.cumm_path_label.setText(QCoreApplication.translate("MainWindow", u"Cumulative Path (last 10 min)", None))
         self.send_orientation_toggle.setText(QCoreApplication.translate("MainWindow", u"Send Orientation Data", None))
         self.run_exp_push.setText(QCoreApplication.translate("MainWindow", u"Run Experiment", None))
         self.abort_exp_push.setText(QCoreApplication.translate("MainWindow", u"Abort Experiment", None))
+        self.cumm_path_checkbox.setText(QCoreApplication.translate("MainWindow", u"Cumulative Path Plot", None))
+        self.heading_occ_checkbox.setText(QCoreApplication.translate("MainWindow", u"Heading Occ. Plot", None))
     # retranslateUi
 
