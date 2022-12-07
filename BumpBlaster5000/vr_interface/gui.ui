@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1158</width>
-    <height>661</height>
+    <width>870</width>
+    <height>531</height>
    </rect>
   </property>
   <property name="palette">
@@ -160,6 +160,15 @@
        </color>
       </brush>
      </colorrole>
+     <colorrole role="PlaceholderText">
+      <brush brushstyle="NoBrush">
+       <color alpha="128">
+        <red>222</red>
+        <green>221</green>
+        <blue>218</blue>
+       </color>
+      </brush>
+     </colorrole>
     </active>
     <inactive>
      <colorrole role="WindowText">
@@ -303,6 +312,15 @@
         <red>0</red>
         <green>0</green>
         <blue>0</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="PlaceholderText">
+      <brush brushstyle="NoBrush">
+       <color alpha="128">
+        <red>222</red>
+        <green>221</green>
+        <blue>218</blue>
        </color>
       </brush>
      </colorrole>
@@ -452,6 +470,15 @@
        </color>
       </brush>
      </colorrole>
+     <colorrole role="PlaceholderText">
+      <brush brushstyle="NoBrush">
+       <color alpha="128">
+        <red>222</red>
+        <green>221</green>
+        <blue>218</blue>
+       </color>
+      </brush>
+     </colorrole>
     </disabled>
    </palette>
   </property>
@@ -506,52 +533,42 @@
      <string>Trigger Opto Stim</string>
     </property>
    </widget>
-   <widget class="ImageView" name="cam_prev">
+   <widget class="PlotWidget" name="heading_occ_plotwidget">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>300</y>
-      <width>341</width>
-      <height>231</height>
-     </rect>
-    </property>
-   </widget>
-   <widget class="PlotWidget" name="scan_z_proj_view">
-    <property name="geometry">
-     <rect>
-      <x>740</x>
-      <y>300</y>
+      <x>490</x>
+      <y>220</y>
       <width>321</width>
       <height>231</height>
      </rect>
     </property>
    </widget>
-   <widget class="QPushButton" name="set_path_push">
+   <widget class="QPushButton" name="exp_filepath_push">
     <property name="geometry">
      <rect>
-      <x>710</x>
+      <x>490</x>
       <y>20</y>
       <width>341</width>
       <height>70</height>
      </rect>
     </property>
     <property name="text">
-     <string>Set Filepath</string>
+     <string>Load Experiment</string>
     </property>
    </widget>
-   <widget class="QLabel" name="filepath_label">
+   <widget class="QLabel" name="exp_filepath_label">
     <property name="geometry">
      <rect>
-      <x>710</x>
-      <y>100</y>
+      <x>490</x>
+      <y>90</y>
       <width>341</width>
       <height>30</height>
      </rect>
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
-      <pointsize>15</pointsize>
+      <family>Sans Serif</family>
+      <pointsize>12</pointsize>
      </font>
     </property>
     <property name="text">
@@ -561,12 +578,12 @@
      <set>Qt::AlignCenter</set>
     </property>
    </widget>
-   <widget class="QLabel" name="z_proj_label">
+   <widget class="QLabel" name="heading_occ_label">
     <property name="geometry">
      <rect>
-      <x>750</x>
-      <y>540</y>
-      <width>161</width>
+      <x>500</x>
+      <y>200</y>
+      <width>311</width>
       <height>20</height>
      </rect>
     </property>
@@ -577,23 +594,7 @@
      </font>
     </property>
     <property name="text">
-     <string>Phase Offset History</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="cam_view_toggle">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>540</y>
-      <width>121</width>
-      <height>23</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Show live cam</string>
-    </property>
-    <property name="checked">
-     <bool>true</bool>
+     <string>Heading Occupancy History (last 10 min)</string>
     </property>
    </widget>
    <widget class="QPushButton" name="stop_scan_push">
@@ -621,8 +622,8 @@
    <widget class="QCheckBox" name="launch_fictrac_toggle">
     <property name="geometry">
      <rect>
-      <x>30</x>
-      <y>220</y>
+      <x>40</x>
+      <y>120</y>
       <width>121</width>
       <height>23</height>
      </rect>
@@ -634,38 +635,12 @@
      <bool>false</bool>
     </property>
    </widget>
-   <widget class="QGraphicsView" name="fly_orientation_preview">
+   <widget class="QLabel" name="cumm_path_label">
     <property name="geometry">
      <rect>
-      <x>390</x>
-      <y>300</y>
-      <width>321</width>
-      <height>231</height>
-     </rect>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="save_fictrac_toggle">
-    <property name="geometry">
-     <rect>
-      <x>180</x>
-      <y>220</y>
-      <width>121</width>
-      <height>23</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Save Fictrac</string>
-    </property>
-    <property name="checked">
-     <bool>false</bool>
-    </property>
-   </widget>
-   <widget class="QLabel" name="fly_orientation_label">
-    <property name="geometry">
-     <rect>
-      <x>390</x>
-      <y>540</y>
-      <width>140</width>
+      <x>70</x>
+      <y>200</y>
+      <width>231</width>
       <height>20</height>
      </rect>
     </property>
@@ -676,31 +651,88 @@
      </font>
     </property>
     <property name="text">
-     <string>Animal orientation</string>
+     <string>Cumulative Path (last 10 min)</string>
     </property>
    </widget>
-   <widget class="QCheckBox" name="checkBox">
+   <widget class="QCheckBox" name="send_orientation_toggle">
     <property name="geometry">
      <rect>
-      <x>390</x>
-      <y>260</y>
+      <x>40</x>
+      <y>150</y>
       <width>165</width>
       <height>37</height>
      </rect>
     </property>
     <property name="text">
-     <string>Read Bump Data</string>
+     <string>Send Orientation Data</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="run_exp_push">
+    <property name="geometry">
+     <rect>
+      <x>490</x>
+      <y>130</y>
+      <width>161</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Run Experiment</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="abort_exp_push">
+    <property name="geometry">
+     <rect>
+      <x>670</x>
+      <y>130</y>
+      <width>161</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Abort Experiment</string>
+    </property>
+   </widget>
+   <widget class="PlotWidget" name="cumm_path_plotwidget">
+    <property name="geometry">
+     <rect>
+      <x>30</x>
+      <y>220</y>
+      <width>321</width>
+      <height>231</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="cumm_path_checkbox">
+    <property name="geometry">
+     <rect>
+      <x>30</x>
+      <y>450</y>
+      <width>151</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Cumulative Path Plot</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="heading_occ_checkbox">
+    <property name="geometry">
+     <rect>
+      <x>490</x>
+      <y>450</y>
+      <width>151</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Heading Occ. Plot</string>
     </property>
    </widget>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>ImageView</class>
-   <extends>QGraphicsView</extends>
-   <header>pyqtgraph</header>
-  </customwidget>
   <customwidget>
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
