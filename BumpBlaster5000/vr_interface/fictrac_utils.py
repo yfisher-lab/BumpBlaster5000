@@ -182,38 +182,32 @@ class MPFictracSocketManager:
         '''
         # Receive one data frame
         new_data = self._sock.recv(4096)  # new_data = 0 if no bytes sent
-        # if not new_data:
-        #     return
+        if not new_data:
+            return
 
         # Decode received data
         
-        if not new_data:
-            pass
-        else:
-            self.ft_buffer += new_data.decode('UTF-8')
+        self.ft_buffer += new_data.decode('UTF-8')
 
         # Find the first frame of data
         endline = self.ft_buffer.find("\n")
-        if endline>0:
-            line = self.ft_buffer[:endline]  # copy first frame
+        line = self.ft_buffer[:endline]  # copy first frame
 
-            # Tokenise
-            toks = line.split(", ")
+        # Tokenise
+        toks = line.split(", ")
 
-            # Check that we have sensible tokens
-            if ((len(toks) < 24) | (toks[0] != "FT")):
-                print('Bad read')
-                return
+        # Check that we have sensible tokens
+        if ((len(toks) < 24) | (toks[0] != "FT")):
+            print('Bad read')
+            return
 
-            # print to output file
-            # self._output_file_handle.writelines([str(line),])
-            self.ft_buffer = self.ft_buffer[endline + 1:]  # delete first frame
+        # print to output file
+        self.ft_buffer = self.ft_buffer[endline + 1:]  # delete first frame
 
         # extract fictrac variables
         # (see https://github.com/rjdmoore/fictrac/blob/master/doc/data_header.txt for descriptions)
-            return {k: toks[v] for k, v in self.columns_to_read.items()}
-        else:
-            return
+        return {k: toks[v] for k, v in self.columns_to_read.items()}
+
 
             
     
