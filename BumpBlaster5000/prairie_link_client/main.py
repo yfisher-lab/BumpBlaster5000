@@ -4,19 +4,25 @@ import threading
 import sys
 import time
 import warnings
+import ctypes
+import os
 
 import numpy as np
-import win32com.client
 from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import QApplication
 import pyqtgraph as pg
 import serial
 
-from BumpBlaster5000.prairie_link_client import plugin_viewer
+
+import plugin_viewer
+import BumpBlaster5000.no as no
 from BumpBlaster5000.utils import pol2cart, cart2pol, threaded
 from BumpBlaster5000 import params
 
 
+if params.hostname == 'SMAUG':
+    import win32com.client
+    
 class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
     def __init__(self, parent=None):
         super(PLUI, self).__init__(parent)
@@ -35,18 +41,18 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.pl = None
         self._pl_active = threading.Event()
         self.open_prairie_link()
-        self._get_frame_period(reset_timer=False)
-        self._zstack_period = self._frame_period * self._zstack_frames
+        # self._get_frame_period(reset_timer=False)
+        # self._zstack_period = self._frame_period * self._zstack_frames
         self._dummy_img = None
 
         # wait for prairie link to connect
-        # TODO: set max timeout and throw an error if prairie link doesn't connect
         print("Waiting for PriaireLink to connect")
         while not self._pl_active.is_set():
             time.sleep(.01)
         print("PrairieLink connected")
         # connect to teensy serial port to read PL commands
         self.teensy_srl_handle = self.continuous_read_teensy_pl_commands()
+        
 
         # connect channel view buttons
         self.ch1ViewButton.stateChanged.connect(self.set_ch1_active)
@@ -67,9 +73,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.ch1_plot.addItem(self.ch1_curr_image)
         self.ch1_plot.showAxis('left', False)
         self.ch1_plot.showAxis('bottom', False)
-        # self.ch1_plot.setAspectLocked(lock=True, ratio=1)
         self.ch1_plot.invertY(True)
-        # self.set_ch1_image()
 
         self.ch2_plot = self.ch2Viewer.getPlotItem()
         self.ch2_plot.setMouseEnabled(x=False, y=False)
@@ -77,9 +81,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.ch2_plot.addItem(self.ch2_curr_image)
         self.ch2_plot.showAxis('left', False)
         self.ch2_plot.showAxis('bottom', False)
-        # self.ch2_plot.setAspectLocked(lock=True, ratio=1)
         self.ch2_plot.invertY(True)
-        # self.set_ch2_image()
 
         # initialize rois
         self.rois = None
@@ -118,8 +120,8 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self._bump_phase = None
         self._bump_queue = queue.Queue()
 
-        # start serial port to send bump data to VR computer
-        self.bump_srl_handle = self.write_bump_data_serial()
+        # start serial port to read VR Data & prairie link commands
+        self.vr_srl_handle = self.read_vr_serial()
 
         # bump viewer
         self.bump_viewer = self.bumpViewer.getPlotItem()
@@ -127,14 +129,12 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.bump_viewer.addItem(self.bump_heatmap)
         self.bump_plot = pg.PlotDataItem(pen=pg.mkPen(color='r', width=3))
         self.bump_viewer.addItem(self.bump_plot)
-        # self.bump_.showAxis('left', False)
-        # self.bump_plot.showAxis('bottom', False)
-        # self.bump_plot.setAspectLocked(lock=True, ratio=1)
-        # self.bump_plot.invertY(True)
+        
+        # 
 
         self.frame_timer = QtCore.QTimer()
         self.frame_timer.timeout.connect(self.frame_update)
-        self.frame_timer.start(self._frame_period)
+        self.frame_timer.start() #self._frame_period)
 
     @threaded
     def continuous_read_teensy_pl_commands(self):
@@ -149,25 +149,21 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         with serial.Serial(self._params['teensy_com'], baudrate=self._params['baudrate']) as srl:
             while self._pl_active.is_set():
                 # read serial and send as commands to Prairie Link
-                # note this will block forever if commands aren't sent
                 # ToDo: set a timeout, if string is not empty, send to prairie link
                 self.pl.SendScriptCommands(srl.readline().decode('UTF-8').rstrip())
 
     @threaded
-    def write_bump_data_serial(self):
+    def read_heading_data_serial(self):
         '''
-        send bump phase and magnitude to VR computer over dedicated serial port
+        reading heading data from VR computer over dedicated serial port
         :param vr_com: com port to VR computer
         :param baudrate: baudrate
         :return:
         '''
 
         with serial.Serial(self._params['vr_com'], baudrate=self._params['baudrate']) as srl:
-            while self._pl_active.is_set():  # while prairie link is active
-                try:
-                    srl.write(self._bump_queue.get().encode('utf-8'))
-                except queue.Queue.Empty:
-                    pass
+            while True: # ToDo: make this a flag for reading vr data
+                srl.readline() # put this in a queue
 
     def open_prairie_link(self):
         '''
@@ -176,8 +172,8 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         '''
 
         # make connection
-        self.pl = win32com.client.Dispatch("PrairieLink.Application")
-        self.pl.Connect()
+        self.pl = win32com.client.Dispatch("PrairieLink64.Application")
+        self.pl.Connect('127.0.0.1')
 
         # set thread safe event
         self._pl_active.set()
@@ -202,10 +198,10 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         :return:
         '''
         # TODO: check this output, change to ms if necessary and round to int
-        self._frame_period = np.float(self.pl.GetState("framePeriod"))
+        self._frame_period = float(self.pl.GetState("framePeriod"))
         if reset_timer:
             self.frame_timer.stop()
-            self.frame_timer.start(self._frame_period)
+            self.frame_timer.start() #self._frame_period)
 
     def set_ch1_active(self):
         '''
@@ -276,8 +272,8 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         if self.ch2_active:
             self._reinit_zbuffer(2)
 
-        # self._get_frame_period()
-        # self._zstack_period = self._frame_period * self._zstack_frames
+        self._get_frame_period()
+        self._zstack_period = self._frame_period * self._zstack_frames
 
 
     def frame_update(self):
@@ -673,6 +669,8 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         else:
             num_baseline_samples = num_func_samples
         num_bump_samples = int(self._params['bump_signal_time'] / self._zstack_period)
+
+
 
         if self.rois['type'] == 'EB':
             # start buffers
