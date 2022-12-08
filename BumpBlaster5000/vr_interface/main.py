@@ -196,12 +196,13 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
                                                               "FicTrac Output File")
             #other args
             print(self.ft_output_path)
-    
-            self._ft_process = threaded(_run_ft_process(self.ft_queue, self.run_ft_evnt, self.ft_output_path))
+            self._read_ft_handle = self.read_ft_queue()
+            self._ft_process = multiprocessed(_run_ft_process(self.ft_queue, self.run_ft_evnt, self.ft_output_path))
         else:
             
             self.run_ft_evnt.clear()
             self._ft_process.join()
+            self._read_ft_handle.join()
         
     @threaded
     def continuous_read_teensy_com(self):
@@ -274,6 +275,7 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
         # close fictrac
         self.run_ft_evnt.clear()
         self._ft_process.join()
+        self._read_ft_handle.join()
         if self.pl_serial is not None:
             self.pl_serial.close()
 
