@@ -20,7 +20,7 @@ from BumpBlaster5000.utils import threaded
 FICTRAC_PATH = r'C:\Users\fisherlab\Documents\FicTrac211\fictrac.exe'
 CONFIG_PATH = r'C:\Users\fisherlab\Documents\FicTrac211\config.txt'
 
-FICTRAC_FRAME_RATE = 450
+FICTRAC_FRAME_RATE = 450 # Hz approximate
 
 
 class FicTracSubProcess:
@@ -92,12 +92,15 @@ class FicTracSocketManager:
         self.ft_output_path = None
         self._ft_output_handle = None
        
-        # self.ft_queue = queue.SimpleQueue()
+        self.ft_serial_queue = queue.SimpleQueue()
         
         self.columns_to_read = columns_to_read
         self.plot_deques = {k: deque(maxlen=int(FICTRAC_FRAME_RATE*plot_buffer_time)) for k in self.columns_to_read.keys()}
         for k, v in self.plot_deques.items():
             v.append(0)
+        self._plot_deque_lock = threding.Lock()
+
+        
 
     def open(self, timeout = 5):
         '''
@@ -120,15 +123,21 @@ class FicTracSocketManager:
             self.open_socket()
 
 
-    def start_reading(self, fictrac_output_path=None):
+    def start_reading(self, output_path=None):
         """
 
         :param fictrac_output_file:
         :return:
         """
         # check if output file exists
-        if fictrac_output_path is not None:
-            os.chdir(fictrac_output_path)
+        if output_path is not None:
+            output_dir, filename = os.path.split(output_path)
+            os.chdir(output_dir)
+
+            self.ft_output_path = output_path
+            self._ft_output_handle = open(output_path,'wb')
+
+
         
 
         # open output file
@@ -144,6 +153,7 @@ class FicTracSocketManager:
         self.reading.clear()
         self._reading_thread_handle.join()
         self._reading_thread_handle = None
+        self._ft_output_handle.close()
 
     
     def open_socket(self):
@@ -248,14 +258,26 @@ class FicTracSocketManager:
                 return
 
             # print to output file
-            # self._ft_output_handle.writelines([str(self.ft_buffer),])
+            #TODO: put this back in after dealing with filenames
+            self._ft_output_handle.writelines([str(self.ft_buffer),])
             self.ft_buffer = self.ft_buffer[endline + 1:]  # delete first frame
 
         # extract fictrac variables
         # (see https://github.com/rjdmoore/fictrac/blob/master/doc/data_header.txt for descriptions)
-        for k,v in self.columns_to_read.items():
-            self.plot_deques[k].append(float(toks[v]))
+        with self._plot_deque_lock:
+            for k,v in self.columns_to_read.items():
+                self.plot_deques[k].append(float(toks[v]))
+
+        #TODO: write to serial queue
+        self.ft_serial_queue.put(toks[self.columns_to_read['heading']])
+
             
         return {k: toks[v] for k, v in self.columns_to_read.items()}
+
+    def reset_plot_dequeus(self):
+
+        with self._plot_deque_lock:
+            for k,v in self.columns_to_read.items():
+                v.clear().append(0)
 
 

@@ -29,13 +29,13 @@ class BumpBlaster(pg_gui.WidgetWindow):
     
     
     
-    def __init__(self):
+    def __init__(self, plot_timeout = 30):
         super().__init__()
 
         ## com port params
         self._params = params.FT_PC_PARAMS
 
-        ## Teensy connections
+        ## Teensy push button connections
         self.start_scan_button.clicked.connect(self.start_scan)
         self.stop_scan_button.clicked.connect(self.stop_scan)
         self.trigger_opto_button.clicked.connect(self.trigger_opto)
@@ -45,14 +45,14 @@ class BumpBlaster(pg_gui.WidgetWindow):
         self.ft_manager = ft_utils.FicTracSocketManager()
         self.launch_fictrac_checkbox.stateChanged.connect(self.toggle_fictrac)
         self._ft_process = None
-        # self.save_fictrac_toggle.stateChanged.connect(self.set_fictrac_save_path)
         self.send_orientation_checkbox.stateChanged.connect(self.toggle_send_orientation)
         self._send_orientation = threading.Event()
+
+        #TODO: Set up prairie link serial, deal with send orientation checkbox
         self.pl_serial = None
         
 
-        ## set data output directory
-        # TODO: force path to be set
+        #TODO: deal with these functions
         self.load_exp_button.clicked.connect(self.set_exp)
         self.run_exp_button.clicked.connect(self.run_exp)
         self.abort_exp_button.clicked.connect(self.abort_exp)
@@ -72,29 +72,13 @@ class BumpBlaster(pg_gui.WidgetWindow):
             time.sleep(.01)
 
         #
-        self.cumm_path_plotitem = self.config_remote_plot(self.cumm_path_view)
-        # self.cumm_path_plotitem.enableAutoRange(enable=True)
-        self.heading_hist_plotitem = self.config_remote_plot(self.heading_hist_view)
-        
-        # self.heading_hist_plotitem.setAspectLocked(lock=True, ratio=1)
-        # self.heading_hist_plotitem.setXRange(-1.,1.)
-        # self.heading_hist_plotitem.setYRange(-1.,1.)
-        
-        
+        self.reset_plots_button.clicked.connect(self.ft_manager.reset_plot_dequeus)
+        #
         self.plot_update_timer = QtCore.QTimer()
         self.plot_update_timer.timeout.connect(self.update_plots)
-        self.plot_update_timer.start(30)
+        self.plot_update_timer.start(plot_timeout)
     
-    @staticmethod
-    def config_remote_plot(remote_plot_view):
-        remote_plot_view.pg.setConfigOptions(antialias = True)
-        plot_item = remote_plot_view.pg.PlotItem()
-        plot_item._setProxyOptions(deferGetattr=True)
-        # plot_item.showAxis('left', False)
-        # plot_item.showAxis('bottom', False)
-        remote_plot_view.setCentralItem(plot_item)
-        return plot_item
-        
+    
 
     def start_scan(self):
         '''
@@ -125,7 +109,9 @@ class BumpBlaster(pg_gui.WidgetWindow):
         # save ft_frames
         if self.ft_output_path is not None:
             scan_number = 0
-            filename = os.path.join(self.ft_output_path,f"ft_frames_scan{scan_number}.pkl")
+            basename, ext = os.path.splitext(self.ft_output_path)
+
+            filename = os.path.join(f"{basename}_scan{scan_number}.pkl")
             while os.path.exists(filename):
                 scan_number+=1
                 filename = os.path.join(self.ft_output_path,f"ft_frames_scan{scan_number}.pkl")
@@ -172,17 +158,32 @@ class BumpBlaster(pg_gui.WidgetWindow):
 
         if self.launch_fictrac_checkbox.isChecked():
             # output path
-            self.ft_output_path = QFileDialog.getExistingDirectory(self.layout,
+            self.ft_output_path = QFileDialog.getOpenFileName(self.layout,
                                                                "FicTrac Output File")
             #other args
             print(self.ft_output_path)
+            #TODO: make this an actual filename rather than a directory and extract directory
             self.ft_manager.open()
             self.ft_manager.start_reading(fictrac_output_path=self.ft_output_path)
+            self._pl_serial_thread = self.write_to_pl_com()
             
             
         else:
             self.ft_manager.stop_reading()
             self.ft_manager.close()
+            self._pl_serial_thread.join()
+
+    @threaded 
+    def write_to_pl_com(self):
+        while self.ft_manager.reading.is_set():
+            if not self.ft_manager.ft_serial_queue.empty():
+                heading = self.ft_manager.ft_serial_queue.get()
+                if self._send_orientation.is_set():
+                    self.pl_serial.write(f"{heading}\n".encode('UTF-8'))
+
+
+            
+
         
     @threaded
     def continuous_read_teensy_com(self):
@@ -203,8 +204,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
                 if msg[0] in set(('start', 'abort')):
                     self.ft_frames[msg[0]] = int(msg[1])
         srl.close()
-        
-   
+
             
     def update_plots(self):
         '''
@@ -215,6 +215,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
         if self.ft_manager.reading.is_set():
             self.plot_cumm_path()
             self.plot_heading_hist()
+            self.plot_current_heading()
             
     def plot_cumm_path(self):
         self.cumm_path_plotitem.plot(self.ft_manager.plot_deques['integrated x'], self.ft_manager.plot_deques['integrated y'],
@@ -229,6 +230,16 @@ class BumpBlaster(pg_gui.WidgetWindow):
                                         fillLevel=0,clear=True, _callSync='off')
         self.heading_hist_plotitem.addLine(x=0,pen=.4)
         self.heading_hist_plotitem.addLine(y=0, pen=.4)
+
+    def plot_current_heading(self):
+
+        x,y = pol2cart(1,self.ft_manager.plot_deques['heading'][-1])
+        self.current_heading_plotitem.plot([0,x],[0,y], pen=(200, 200, 200), symbolBrush=(255, 0, 0),
+                     symbolPen='w', clear = True, _callSync='off')
+        self.addLine(x=0, pen=.4)
+        self.addLine(y=0, pen=.4)
+
+        
         
 
 
@@ -240,10 +251,10 @@ class BumpBlaster(pg_gui.WidgetWindow):
         '''
 
         # close fictrac
+        self.ft_manager.stop_reading()
+        self.ft_manager.close()
+        self._pl_serial_thread.join()
         
-        if self.pl_serial is not None:
-            self.pl_serial.close()
-
         # stop scan
         self.stop_scan()
         self._isreading_teensy.clear()
@@ -258,9 +269,3 @@ class BumpBlaster(pg_gui.WidgetWindow):
         
         self.disconnect()
         event.accept()
-
-    
-
-if __name__ == '__main__':
-    ui = BumpBlaster()
-    pg.exec()
