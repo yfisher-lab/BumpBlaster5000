@@ -118,7 +118,7 @@ class MPFictracSocketManager:
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._sock.bind((self.host, self.port))
         self._sock.setblocking(False)
-        self._socket_open.set()
+        
             
     # def _open_output_file(self):
     #     """
@@ -171,7 +171,7 @@ class MPFictracSocketManager:
         if ready[0]:
             single_line = self._process_line()
             # maybe want to replace queue with just a locked value to speed up plotting
-            self.ft_queue.put(single_line)
+            self.queue.put(single_line)
         else:
             pass
             
@@ -186,34 +186,34 @@ class MPFictracSocketManager:
         #     return
 
         # Decode received data
-        with self._ft_buffer_lock:
-            if not new_data:
-                pass
-            else:
-                self.ft_buffer += new_data.decode('UTF-8')
+        
+        if not new_data:
+            pass
+        else:
+            self.ft_buffer += new_data.decode('UTF-8')
 
-            # Find the first frame of data
-            endline = self.ft_buffer.find("\n")
-            if endline>0:
-                line = self.ft_buffer[:endline]  # copy first frame
+        # Find the first frame of data
+        endline = self.ft_buffer.find("\n")
+        if endline>0:
+            line = self.ft_buffer[:endline]  # copy first frame
 
-                # Tokenise
-                toks = line.split(", ")
+            # Tokenise
+            toks = line.split(", ")
 
-                # Check that we have sensible tokens
-                if ((len(toks) < 24) | (toks[0] != "FT")):
-                    print('Bad read')
-                    return
-
-                # print to output file
-                # self._output_file_handle.writelines([str(line),])
-                self.ft_buffer = self.ft_buffer[endline + 1:]  # delete first frame
-
-            # extract fictrac variables
-            # (see https://github.com/rjdmoore/fictrac/blob/master/doc/data_header.txt for descriptions)
-                return {k: toks[v] for k, v in self.columns_to_read.items()}
-            else:
+            # Check that we have sensible tokens
+            if ((len(toks) < 24) | (toks[0] != "FT")):
+                print('Bad read')
                 return
+
+            # print to output file
+            # self._output_file_handle.writelines([str(line),])
+            self.ft_buffer = self.ft_buffer[endline + 1:]  # delete first frame
+
+        # extract fictrac variables
+        # (see https://github.com/rjdmoore/fictrac/blob/master/doc/data_header.txt for descriptions)
+            return {k: toks[v] for k, v in self.columns_to_read.items()}
+        else:
+            return
 
             
     

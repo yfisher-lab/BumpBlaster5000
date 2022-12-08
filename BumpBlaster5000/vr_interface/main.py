@@ -8,17 +8,19 @@ from collections import deque
 import pickle
 
 import numpy as np
-from PySide2 import QtCore, QtGui, QtWidgets, QRect
+from PySide2 import QtCore, QtGui, QtWidgets
 from PySide2.QtWidgets import QApplication, QFileDialog, QInputDialog
 import pyqtgraph as pg
 import serial
 
 import gui
 from .camera import Flea3Cam
-import ui_gui, params
-import fictrac_utils as ft_utils
-import utils
-from utils import threaded, multiprocessed
+from . import ui_gui
+from .. import params
+# import params
+from . import fictrac_utils as ft_utils
+# import utils
+from ..utils import threaded, multiprocessed
 
 
 class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
@@ -71,12 +73,12 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
         # change plot widgets to remote graphics views()
         self.cumm_path_plotwidget = pg.widgets.RemoteGraphicsView.RemoteGraphicsView(self.centralwidget)
         self.cumm_path_plotwidget.setObjectName(u"cumm_path_plotwidget")
-        self.cumm_path_plotwidget.setGeometry(QRect(30, 220, 321, 231))
+        self.cumm_path_plotwidget.setGeometry(QtCore.QRect(30, 220, 321, 231))
         self.cumm_path_plotitem = self.config_remote_plot(self.cumm_path_plotwidget)
         
         self.heading_occ_plotwidget = pg.widgets.RemoteGraphicsView.RemoteGraphicsView(self.centralwidget)
         self.heading_occ_plotwidget.setObjectName(u"heading_occ_plotwidget")
-        self.heading_occ_plotwidget.setGeometry(QRect(490, 220, 321, 231))
+        self.heading_occ_plotwidget.setGeometry(QtCore.QRect(490, 220, 321, 231))
         self.heading_occ_plotitem = self.config_remote_plot(self.heading_occ_plotwidget)
         
         plot_buffer_time = 600 #seconds
@@ -168,6 +170,15 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
             
     def toggle_heading_occ(self):
         self.plot_buffers['heading'].clear()
+
+    def set_exp(self):
+        pass
+
+    def run_exp(self):
+        pass
+
+    def abort_exp(self):
+        pass
         
     def toggle_fictrac(self):
         '''
@@ -177,24 +188,20 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
 
         if self.launch_fictrac_toggle.isChecked():
             # queue
-            self.ft_queue = mp.SimpleQueue()
+            self.ft_queue = queue.SimpleQueue()
             # run fictrac event
             self.run_ft_evnt.set()
             # output path
-            self.ft_output_path = QFileDialog.getSaveFilename(self.centralwidget,
+            self.ft_output_path = QFileDialog.getExistingDirectory(self.centralwidget,
                                                               "FicTrac Output File")
             #other args
+            print(self.ft_output_path)
     
-            self._ft_process = self.run_ft_process(self.ft_queue, self.run_ft_evnt, self.ft_output_path)
+            self._ft_process = threaded(_run_ft_process(self.ft_queue, self.run_ft_evnt, self.ft_output_path))
         else:
             
             self.run_ft_evnt.clear()
             self._ft_process.join()
-
-    @staticmethod
-    @multiprocessed
-    def run_ft_process(ft_queue, run_ft_evnt, output_path):
-        ft_utils.MPFictracSocketManager.run(ft_queue, run_ft_evnt, output_path)
         
     @threaded
     def continuous_read_teensy_com(self):
@@ -284,6 +291,11 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
         
         self.disconnect()
         event.accept()
+
+
+
+def _run_ft_process(ft_queue, run_ft_evnt, output_path):
+    ft_utils.MPFictracSocketManager.run(ft_queue, run_ft_evnt, output_path)
 
 def main():
     app = QApplication(sys.argv)

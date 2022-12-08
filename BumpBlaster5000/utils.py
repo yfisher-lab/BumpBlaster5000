@@ -1,8 +1,11 @@
 import threading
+import multiprocessing as mp
 
+import numpy as np
 from numba import njit
 
-from . import np, mp
+
+
 
 
 
@@ -59,7 +62,7 @@ def pol2cart(rho, phi):
     return x, y
 
 
-@njit(nopython=True)
+@njit
 def get_bin_edges(a, bins):
     bin_edges = np.zeros((bins+1,), dtype=np.float64)
     a_min = a.min()
@@ -72,7 +75,7 @@ def get_bin_edges(a, bins):
     return bin_edges
 
 
-@njit(nopython=True)
+@njit
 def compute_bin(x, bin_edges):
     # assuming uniform bins for now
     n = bin_edges.shape[0] - 1
@@ -91,7 +94,7 @@ def compute_bin(x, bin_edges):
         return bin
 
 
-@njit(nopython=True)
+@njit
 def numba_histogram(a, bins, bin_edges=None):
     hist = np.zeros((bins,), dtype=np.intp)
     if bin_edges is None:

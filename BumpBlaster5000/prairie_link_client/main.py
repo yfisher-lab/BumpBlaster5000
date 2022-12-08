@@ -15,7 +15,7 @@ import serial
 
 
 import plugin_viewer
-import BumpBlaster5000
+import BumpBlaster5000.no as no
 from BumpBlaster5000.utils import pol2cart, cart2pol, threaded
 from BumpBlaster5000 import params
 
