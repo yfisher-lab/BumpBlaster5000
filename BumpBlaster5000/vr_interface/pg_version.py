@@ -5,7 +5,7 @@ from pyqtgraph.Qt import QtWidgets
 
 class WidgetWindow:
     
-    def setup(self):
+    def __init__(self):
         self.app = pg.mkQApp("BumpBlaster5000 Interface")
         
         
@@ -60,4 +60,5 @@ class WidgetWindow:
     
 
 if __name__ == '__main__':
+    ww = WidgetWindow()
     pg.exec()
