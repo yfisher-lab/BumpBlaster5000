@@ -97,6 +97,7 @@ void state_machine() {
   static int val = 0;
 
   recv_state_data();
+  // change first value to an argument that tells how long the command is
   if (new_state) {
     strcpy(_state_chars,state_chars);
     if (state_index==0) {
@@ -105,7 +106,7 @@ void state_machine() {
     else if (state_index == 1) {
       val = atoi(_state_chars)
     }
-    execute_state(cmd,val)
+    execute_state(cmd,val) // move outside of loop and only execute after full command has come through
     state_index = (state_index+1) % state_num_vals;
     new_state = false;
   }
@@ -171,9 +172,9 @@ void execute_state(int cmd, int val) {
       bk_opto_trig_timestamp = millis();
 
 
-      SerialUSB2.print("opto, "); // opto trigger rising edge Fictrac frame
-      SerialUSB2.print(ft_current_frame);
-      SerialUSB2.print('\n');
+      // SerialUSB2.print("opto, "); // opto trigger rising edge Fictrac frame
+      // SerialUSB2.print(ft_current_frame);
+      // SerialUSB2.print('\n');
       break;
 
     case 4: // set heading pin to manual control (i.e. open loop)
@@ -187,6 +188,19 @@ void execute_state(int cmd, int val) {
 
     case 7: // set index_dac value 
       index_dac.setVoltage(val,false);
+
+    case 8: // remapping coroutine
+      // begin couroutine
+
+      // val0 starting position
+
+      // val2 n spots
+
+      // val3 time on
+
+      // val4 delay to opto
+
+      // val5 time off
 
 
   }
@@ -316,16 +330,4 @@ void ft_state_machine() {
 // col 23 sequence counter - usually frame counter but can reset is tracking resets
 // col 24 delta timestep since last frame
 // col 25 alt timestamp - frame capture time (ms since midnight)
-
-
-// void bk_state() {
-//   int _cmd = 0;
-//   int _val = 0;
-//   if (SerialUSB1.available() > 0) {
-//     _cmd = SerialUSB1.parseInt();
-//     _val = SerialUSB1.parseInt();
-//   }
-//   bk_state_machine(_cmd, _val);
-    
-// }
 
