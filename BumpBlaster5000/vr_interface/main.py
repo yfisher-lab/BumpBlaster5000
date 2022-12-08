@@ -194,7 +194,7 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
             # self.run_ft_evnt.set()
             # output path
             self.ft_output_path = QFileDialog.getExistingDirectory(self.centralwidget,
-                                                              "FicTrac Output File")
+                                                           "FicTrac Output File")
             #other args
             os.chdir(self.ft_output_path)
             print(self.ft_output_path)
