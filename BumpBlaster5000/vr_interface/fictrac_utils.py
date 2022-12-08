@@ -286,6 +286,7 @@ class FicTracSocketManager:
         # check if output file exists
         if fictrac_output_path is not None:
             os.chdir(fictrac_output_path)
+        
 
         # open output file
         self.reading.set()
@@ -404,13 +405,13 @@ class FicTracSocketManager:
                 return
 
             # print to output file
-            self._ft_output_handle.writelines([str(self.ft_buffer),])
+            # self._ft_output_handle.writelines([str(self.ft_buffer),])
             self.ft_buffer = self.ft_buffer[endline + 1:]  # delete first frame
 
         # extract fictrac variables
         # (see https://github.com/rjdmoore/fictrac/blob/master/doc/data_header.txt for descriptions)
         for k,v in self.columns_to_read.items():
-            self.plot_deques[k].append(toks[v])
+            self.plot_deques[k].append(float(toks[v]))
             
         return {k: toks[v] for k, v in self.columns_to_read.items()}
 
