@@ -4,7 +4,8 @@ char state_chars[num_chars];
 char _state_chars[num_chars];
 bool new_state = false;
 int state_index = 0;
-const int state_num_vals = 2;
+// const int state_num_vals = 2;
+
 bool closed_loop = true;
 
 // FicTrac reading variables
@@ -15,10 +16,9 @@ int ft_index=0;
 double ft_heading;
 float ft_x;
 float ft_y;
-
-const byte ft_frame_pin = 2; // update pin value
-
 int ft_current_frame = 0;
+const byte ft_frame_pin = 2; 
+
 
 #include <Wire.h>
 #include <Adafruit_MCP4725.h>
@@ -40,6 +40,16 @@ const byte bk_opto_trig_pin = 4;
 bool bk_opto_trig_state = false;
 int bk_opto_trig_timestamp;
 const int bk_trig_timeout = 10;
+
+bool opto_countdown_bool = false;
+int opto_coundown_dur = 100;
+int opto_countdown_timestamp;
+
+bool dac_countdown_bool = false;
+int dac_countdown_dur = 100;
+int dac_countdown_timestamp;
+int dac_countdown_heading;
+int dac_countdown_index;
 
 #define BKSERIAL Serial6 // update to current pin settings
 
@@ -75,8 +85,7 @@ void setup() {
   digitalWriteFast(bk_opto_trig_pin, LOW);
   bk_opto_trig_timestamp = millis();
 
-  // camera trig
-//  pinMode(cam_trig_pin,INPUT);
+  // opto_countdown_timestamp = millis();
 
   BKSERIAL.begin(115200);
   
@@ -93,21 +102,30 @@ FASTRUN void loop() { // FASTRUN teensy keyword
 }
 
 void state_machine() {
+  static int state_cmd_len == -1000;
   static int cmd = 0;
-  static int val = 0;
+  int val_arr[];
+  // static int val = 0;
 
   recv_state_data();
   if (new_state) {
     strcpy(_state_chars,state_chars);
-    if (state_index==0) {
-      cmd = atoi(_state_chars)
+    if (state_index==0) { // first value is the length of the state machine message
+      state_cmd_len = atoi(_state_chars);
+      int val_arr[state_cmd_len];
     } 
-    else if (state_index == 1) {
-      val = atoi(_state_chars)
-      execute_state(cmd,val)
+    else if (state_index == 1) { // second value is the state to go to in state machine
+      cmd = atoi(_state_chars);
+    }
+    else { // the remaining value are parameters specific to the state
+      val_arr[state_index-2] = atoi(_state_chars);
     }
     
-    state_index = (state_index+1) % state_num_vals;
+    state_index +=1; // update index
+    if ((state_index-2) == state_cmd_len) { // if reached end of state machine message
+      execute_state(cmd, val_arr);
+      state_index = 0;
+    }
     new_state = false;
   }
   
@@ -137,7 +155,7 @@ void recv_state_data() { // receive USB1 data, ov
   }
 }
 
-void execute_state(int cmd, int val) {
+void execute_state(int cmd, int val_arr[]) {
 
   switch(cmd){
     case 0: // do nothing
@@ -168,38 +186,73 @@ void execute_state(int cmd, int val) {
       }
       break;
     case 3: // flip opto scan trigger high
-      digitalWriteFast(bk_opto_trig_pin, HIGH);
-      bk_opto_trig_state = true;
-      bk_opto_trig_timestamp = millis();
-
-
-      SerialUSB2.print("opto, "); // opto trigger rising edge Fictrac frame
-      SerialUSB2.print(ft_current_frame);
-      SerialUSB2.print('\n');
+      trig_opto();
       break;
 
     case 4: // set heading pin to manual control (i.e. open loop)
       closed_loop=false;
+      break;
     
     case 5: // go back to closed loop 
       closed_loop = true;
+      break;
 
     case 6: // set heading_dac value
-      heading_dac.setVoltage(val, false);
+      heading_dac.setVoltage(val_arr[0], false);
+      break;
 
     case 7: // set index_dac value 
-      index_dac.setVoltage(val,false);
+      index_dac.setVoltage(val_arr[0],false);
+      break;
 
+    case 8: // set heading and index dac
+      heading_dac.setVoltage(val_arr[0], false);
+      index_dac.setVoltage(val_arr[1], false);
+      break;
+
+    case 9: // set heading and index dac, trigger opto with specified delay
+      if (val_arr[2]>=0) {
+        heading_dac.setVoltage(val_arr[0], false);
+        index_dac.setVoltage(val_arr[1],false);
+      
+        opto_countdown_bool = true;
+        opto_countdown_dur = val_arr[2];
+        opto_countdown_timestamp = millis();
+      } else {
+        trig_opto();
+
+        dac_countdown_bool = true;
+        dac_countdown_dur = -1*val_arr[2];
+        dac_countdown_timestamp = millis();
+
+        dac_countdown_heading = val_arr[0];
+        dac_countdown_index = val_arr[1];
+        
+
+      }
+      break;
+
+    
 
   }
   check_pins();
-  
+}
 
+void trig_opto() {
+
+  digitalWriteFast(bk_opto_trig_pin, HIGH);
+  bk_opto_trig_state = true;
+  bk_opto_trig_timestamp = millis();
+
+
+  SerialUSB2.print("opto, "); // opto trigger rising edge Fictrac frame
+  SerialUSB2.print(ft_current_frame);
+  SerialUSB2.print('\n');
 }
 
 
 void check_pins() {
-// flip triggers down
+  // flip start down
   int curr_timestamp = millis();
   if (bk_scan_trig_state & ((curr_timestamp - bk_scan_trig_timestamp) > bk_trig_timeout)) {
     if (bk_isscanning) { // if this is a start scan trigger
@@ -213,9 +266,28 @@ void check_pins() {
 
   }
 
+  // flip opto trigger down
   if (bk_opto_trig_state & ((curr_timestamp - bk_opto_trig_timestamp) > bk_trig_timeout)) {
     digitalWriteFast(bk_opto_trig_pin,LOW);
     bk_opto_trig_state=false;
+  }
+
+  // flip opto up after specified delay
+  if (opto_countdown_bool) {
+    if ((curr_timestamp-opto_countdown_timestamp)>opto_coundown_dur) {
+      trig_opto();
+      opto_countdown_bool = false;
+
+    }
+  }
+
+  // set dac values after specified delay
+  if (dac_countdown_bool) {
+    if ((curr_timestamp-dac_countdown_timestamp) > dac_countdown_dur) {
+      heading_dac.setVoltage(dac_countdown_heading);
+      index_dac.setVoltage(dac_countdown_index);
+      dac_countdown_bool = false;
+    }
   }
 }
 
