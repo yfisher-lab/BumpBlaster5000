@@ -44,6 +44,7 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
         self.ft_frames = None
         self.launch_fictrac_toggle.stateChanged.connect(self.toggle_fictrac)
         self._ft_process = None
+        self._ft_manager = ft_utils.FicTracSocketManager()
         # self.save_fictrac_toggle.stateChanged.connect(self.set_fictrac_save_path)
         self.send_orientation_toggle.stateChanged.connect(self.toggle_send_orientation)
         self._send_orientation = threading.Event()
@@ -187,20 +188,24 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
         '''
 
         if self.launch_fictrac_toggle.isChecked():
-            # queue
-            self.ft_queue = queue.SimpleQueue()
-            # run fictrac event
-            self.run_ft_evnt.set()
+            # # queue
+            # self.ft_queue = queue.SimpleQueue()
+            # # run fictrac event
+            # self.run_ft_evnt.set()
             # output path
             self.ft_output_path = QFileDialog.getExistingDirectory(self.centralwidget,
                                                               "FicTrac Output File")
             #other args
+            os.chdir(self.ft_output_path)
             print(self.ft_output_path)
+            self._ft_manager.open()
+            self._ft_manager.start_reading()
             self._read_ft_handle = self.read_ft_queue()
-            self._ft_process = multiprocessed(_run_ft_process(self.ft_queue, self.run_ft_evnt, self.ft_output_path))
+            
+            self._ft_process = threaded(_run_ft_process(self.ft_queue, self.run_ft_evnt, self.ft_output_path))
         else:
             
-            self.run_ft_evnt.clear()
+            # self.run_ft_evnt.clear()
             self._ft_process.join()
             self._read_ft_handle.join()
         
