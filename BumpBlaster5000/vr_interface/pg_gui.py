@@ -49,7 +49,7 @@ class WidgetWindow:
         self.current_heading_view = pg.widgets.RemoteGraphicsView.RemoteGraphicsView()
         self.current_heading_view.pg.setConfigOptions(antialias = True)
         self.current_heading_view.setWindowTitle("Current Heading")
-        self.current_heading_view.connect(self.current_heading_view.close)
+        self.app.aboutToQuit.connect(self.current_heading_view.close)
         self.current_heading_plotitem = self.current_heading_view.pg.PlotItem(title="Current Heading")
         self.current_heading_plotitem._setProxyOptions(deferGetattr=True)
         self.current_heading_plotitem.setAspectLocked(lock=True, ratio=1)
@@ -66,19 +66,19 @@ class WidgetWindow:
         self.layout.addWidget(self.stop_scan_button, row=0, col=1)
         self.layout.addWidget(self.trigger_opto_button, row=0, col=2)
 
-        self.layout.addWidget(self.load_exp_button, row=0, col=4, colspan=3)
+        self.layout.addWidget(self.load_exp_button, row=0, col=4, colspan=2)
         self.layout.addWidget(self.run_exp_button, row=1, col=4)
-        self.layout.addWidget(self.abort_exp_button, row=1, col=6)
+        self.layout.addWidget(self.abort_exp_button, row=1, col=5)
 
         self.layout.addWidget(self.reset_plots_button, row=2, col=0)
 
         self.layout.addWidget(self.launch_fictrac_checkbox, row=1, col=0)
         self.layout.addWidget(self.send_orientation_checkbox, row=1, col=1)
         self.layout.addWidget(self.cumm_path_view,row=3,col=0,colspan=2,rowspan=2)
-        self.layout.addWidget(self.heading_hist_view,row=3,col=3,colspan=2,rowspan=2)
-        self.layout.addWidget(self.current_heading_view, row=3, col=5, colspan = 2, rowspan=2)
+        self.layout.addWidget(self.heading_hist_view,row=3,col=2,colspan=2,rowspan=2)
+        self.layout.addWidget(self.current_heading_view, row=3, col=4, colspan = 2, rowspan=2)
 
-        self.layout.resize(900,500)
+        self.layout.resize(1200,500)
         self.layout.show()
         
     def set_colors(self):
