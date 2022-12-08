@@ -9,8 +9,8 @@ import pickle
 
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph import QtCore, QtGui, QtWidgets
-from pyqtgraph.QtWidgets import QFileDialog
+from pyqtgraph import QtCore, QtGui, Qt
+from pyqtgraph.Qt.QtWidgets import QFileDialog
 
 import serial
 
@@ -70,22 +70,25 @@ class BumpBlaster(pg_gui.WidgetWindow):
 
         #
         self.cumm_path_plotitem = self.config_remote_plot(self.cumm_path_view)
-        self.cumm_path_plotitem.enableAutoRange(enable=True)
-        self.heading_occ_plotitem = self.config_remote_plot(self.heading_occ_view)
-        self.heading_occ_plotitem.setXRange(-.5,.5)
-        self.heading_occ_plotitem.setYRange(-.5,.5)
+        # self.cumm_path_plotitem.enableAutoRange(enable=True)
+        self.heading_hist_plotitem = self.config_remote_plot(self.heading_hist_view)
+        
+        # self.heading_hist_plotitem.setAspectLocked(lock=True, ratio=1)
+        # self.heading_hist_plotitem.setXRange(-1.,1.)
+        # self.heading_hist_plotitem.setYRange(-1.,1.)
+        
         
         self.plot_update_timer = QtCore.QTimer()
         self.plot_update_timer.timeout.connect(self.update_plots)
-        self.plot_update_timer.start(5)
+        self.plot_update_timer.start(30)
     
     @staticmethod
     def config_remote_plot(remote_plot_view):
         remote_plot_view.pg.setConfigOptions(antialias = True)
         plot_item = remote_plot_view.pg.PlotItem()
         plot_item._setProxyOptions(deferGetattr=True)
-        plot_item.showAxis('left', False)
-        plot_item.showAxis('bottom', False)
+        # plot_item.showAxis('left', False)
+        # plot_item.showAxis('bottom', False)
         remote_plot_view.setCentralItem(plot_item)
         return plot_item
         
@@ -166,7 +169,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
 
         if self.launch_fictrac_checkbox.isChecked():
             # output path
-            self.ft_output_path = QFileDialog.getExistingDirectory(self.centralwidget,
+            self.ft_output_path = QFileDialog.getExistingDirectory(self.layout,
                                                                "FicTrac Output File")
             #other args
             print(self.ft_output_path)
@@ -206,19 +209,23 @@ class BumpBlaster(pg_gui.WidgetWindow):
         :return:
         '''
 
-        
-        self.plot_cumm_path()
-        self.plot_heading_occ()
+        if self.ft_manager.reading.is_set():
+            self.plot_cumm_path()
+            self.plot_heading_hist()
             
     def plot_cumm_path(self):
-        # print('calling plot')
         self.cumm_path_plotitem.plot(self.ft_manager.plot_deques['integrated x'], self.ft_manager.plot_deques['integrated y'],
                                      clear=True, _callSync='off')
         
-    def plot_heading_occ(self):
+    def plot_heading_hist(self):
         hist, edges = numba_wrapped_histogram(np.array(self.ft_manager.plot_deques['heading']), 20)
-        x, y = pol2cart(hist, edges[1:])
-        self.heading_occ_plotitem.plot(x,y, fillLevel=1,clear=True, _callSync='off')
+
+        
+        x, y = pol2cart(hist, edges)
+        self.heading_hist_plotitem.plot(x,y, brush=(0,0,255,150),
+                                        fillLevel=0,clear=True, _callSync='off')
+        self.heading_hist_plotitem.addLine(x=0,pen=.4)
+        self.heading_hist_plotitem.addLine(y=0, pen=.4)
         
 
 
@@ -244,7 +251,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
         
 
         self.cumm_path_plotwidget.close()
-        self.heading_occ_plotwidget.close()
+        self.heading_hist_plotwidget.close()
         
         self.disconnect()
         event.accept()
@@ -252,5 +259,5 @@ class BumpBlaster(pg_gui.WidgetWindow):
     
 
 if __name__ == '__main__':
-    bb = BumpBlaster()
+    ui = BumpBlaster()
     pg.exec()
