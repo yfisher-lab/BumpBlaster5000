@@ -104,11 +104,13 @@ void state_machine() {
     } 
     else if (state_index == 1) {
       val = atoi(_state_chars)
+      execute_state(cmd,val)
     }
-    execute_state(cmd,val)
+    
     state_index = (state_index+1) % state_num_vals;
     new_state = false;
   }
+  
 }
 
 void recv_state_data() { // receive USB1 data, ov
