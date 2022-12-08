@@ -278,6 +278,20 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
         self.disconnect()
         event.accept()
 
+
+class FicTracPlots:
+    
+    def __init__(ft_running_event, plot_deques):
+        
+        app = pg.mkQApp()
+        
+        win = pg.LayoutWidget()
+        win.resize(300,300)
+        pg.setConfigOptions(antialias=True)
+        
+        
+
+
 def main():
     app = QApplication(sys.argv)
     form = FLUI()
