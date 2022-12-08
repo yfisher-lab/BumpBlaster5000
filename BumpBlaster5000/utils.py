@@ -95,8 +95,8 @@ def compute_bin(x, bin_edges):
 
 
 @njit
-def numba_histogram(a, bins, bin_edges=None):
-    hist = np.zeros((bins,), dtype=np.intp)
+def numba_wrapped_histogram(a, bins, bin_edges=None):
+    hist = np.zeros((bins+1,), dtype=np.intp)
     if bin_edges is None:
         bin_edges = get_bin_edges(a, bins)
 
@@ -104,5 +104,6 @@ def numba_histogram(a, bins, bin_edges=None):
         bin = compute_bin(x, bin_edges)
         if bin is not None:
             hist[int(bin)] += 1
+    hist[-1]=hist[0]
 
     return hist, bin_edges
