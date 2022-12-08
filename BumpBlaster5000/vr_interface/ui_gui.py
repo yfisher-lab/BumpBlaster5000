@@ -13,6 +13,7 @@ from PySide2.QtGui import *
 from PySide2.QtWidgets import *
 
 from pyqtgraph import PlotWidget
+# import pyqtgraph as pg
 
 
 class Ui_MainWindow(object):

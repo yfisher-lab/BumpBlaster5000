@@ -6,7 +6,8 @@ from pyqtgraph.Qt import QtCore, QtWidgets
 
 # import BumpBlaster5000
 # from BumpBlaster5000.utils import pol2cart
-from utils import pol2cart
+import BumpBlaster5000
+from BumpBlaster5000.utils import pol2cart
 
 # def update():
 
@@ -96,7 +97,7 @@ def update():
 
 timer = QtCore.QTimer()
 timer.timeout.connect(update)
-timer.start(5)
+timer.start(1)
 
 
 ## Start Qt event loop unless running in interactive mode.

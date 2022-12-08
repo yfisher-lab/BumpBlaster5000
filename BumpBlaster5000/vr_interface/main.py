@@ -69,16 +69,18 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
             time.sleep(.01)
 
         # change plot widgets to remote graphics views()
-        self.cumm_path_plotwidget = pg.widgets.RemoteGraphicsView.RemoteGraphicsView(self.centralwidget)
-        self.cumm_path_plotwidget.setObjectName(u"cumm_path_plotwidget")
-        self.cumm_path_plotwidget.setGeometry(QtCore.QRect(30, 220, 321, 231))
-        self.cumm_path_plotitem = self.config_remote_plot(self.cumm_path_plotwidget)
-        
-        self.heading_occ_plotwidget = pg.widgets.RemoteGraphicsView.RemoteGraphicsView(self.centralwidget)
-        self.heading_occ_plotwidget.setObjectName(u"heading_occ_plotwidget")
-        self.heading_occ_plotwidget.setGeometry(QtCore.QRect(490, 220, 321, 231))
-        self.heading_occ_plotitem = self.config_remote_plot(self.heading_occ_plotwidget)
-        
+        # self.cumm_path_plotwidget = pg.widgets.RemoteGraphicsView.RemoteGraphicsView(self.centralwidget)
+        # self.cumm_path_plotwidget.setObjectName(u"cumm_path_plotwidget")
+        # self.cumm_path_plotwidget.setGeometry(QtCore.QRect(30, 220, 321, 231))
+        # self.cumm_path_plotitem = self.config_remote_plot(self.cumm_path_plotwidget)
+        self.cumm_path_plotitem = self.cumm_path_plotwidget.getPlotItem()
+
+        # self.heading_occ_plotwidget = pg.widgets.RemoteGraphicsView.RemoteGraphicsView(self.centralwidget)
+        # self.heading_occ_plotwidget.setObjectName(u"heading_occ_plotwidget")
+        # self.heading_occ_plotwidget.setGeometry(QtCore.QRect(490, 220, 321, 231))
+        # self.heading_occ_plotitem = self.config_remote_plot(self.heading_occ_plotwidget)
+        self.heading_occ_plotitem = self.heading_occ_plotwidget.getPlotItem()
+
         # plot_buffer_time = 600 #seconds
         # self.plot_buffers = {'integrated x': deque(maxlen=int(ft_utils.FICTRAC_FRAME_RATE*plot_buffer_time)),
         #                     'integrated y': deque(maxlen=int(ft_utils.FICTRAC_FRAME_RATE*plot_buffer_time)),
@@ -90,7 +92,7 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
         
         self.plot_update_timer = QtCore.QTimer()
         self.plot_update_timer.timeout.connect(self.update_plots)
-        self.plot_update_timer.start()
+        self.plot_update_timer.start(5)
     
     @staticmethod
     def config_remote_plot(remote_plot_widget):
@@ -99,6 +101,7 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
         plot_item._setProxyOptions(deferGetattr=True)
         plot_item.showAxis('left', False)
         plot_item.showAxis('bottom', False)
+        plot_item.enableAutoRange(enable=True)
         remote_plot_widget.setCentralItem(plot_item)
         return plot_item
         
@@ -163,11 +166,14 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
             self.pl_serial.close()
         
     def toggle_cumm_path(self): 
-        self.plot_buffers['integrated x'].clear()
-        self.plot_buffers['integrated y'].clear()
+        pass
+
+        # self.plot_buffers['integrated x'].clear()
+        # self.plot_buffers['integrated y'].clear()
             
     def toggle_heading_occ(self):
-        self.plot_buffers['heading'].clear()
+        pass
+        # self.plot_buffers['heading'].clear()
 
     def set_exp(self):
         pass
@@ -232,12 +238,13 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
             self.plot_heading_occ()
             
     def plot_cumm_path(self):
+        # print('calling plot')
         self.cumm_path_plotitem.plot(self.ft_manager.plot_deques['integrated x'], self.ft_manager.plot_deques['integrated y'],
-                                     pen=(200,200,200),clear=True, _callSync='off')
+                                     clear=True, _callSync='off')
         
     def plot_heading_occ(self):
-        hist, edges = numba_histogram(self.ft_manager.plot_deques['heading'], 20)
-        x, y = pol2cart(edges[1:],hist)
+        hist, edges = numba_histogram(np.array(self.ft_manager.plot_deques['heading']), 20)
+        x, y = pol2cart(hist, edges[1:])
         self.heading_occ_plotitem.plot(x,y, fillLevel=.5,clear=True, _callSync='off')
         
 
