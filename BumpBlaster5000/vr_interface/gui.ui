@@ -10,7 +10,7 @@
     <x>0</x>
     <y>0</y>
     <width>870</width>
-    <height>531</height>
+    <height>230</height>
    </rect>
   </property>
   <property name="palette">
@@ -533,16 +533,6 @@
      <string>Trigger Opto Stim</string>
     </property>
    </widget>
-   <widget class="PlotWidget" name="heading_occ_plotwidget">
-    <property name="geometry">
-     <rect>
-      <x>490</x>
-      <y>220</y>
-      <width>321</width>
-      <height>231</height>
-     </rect>
-    </property>
-   </widget>
    <widget class="QPushButton" name="exp_filepath_push">
     <property name="geometry">
      <rect>
@@ -576,25 +566,6 @@
     </property>
     <property name="alignment">
      <set>Qt::AlignCenter</set>
-    </property>
-   </widget>
-   <widget class="QLabel" name="heading_occ_label">
-    <property name="geometry">
-     <rect>
-      <x>500</x>
-      <y>200</y>
-      <width>311</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Arial</family>
-      <pointsize>13</pointsize>
-     </font>
-    </property>
-    <property name="text">
-     <string>Heading Occupancy History (last 10 min)</string>
     </property>
    </widget>
    <widget class="QPushButton" name="stop_scan_push">
@@ -633,25 +604,6 @@
     </property>
     <property name="checked">
      <bool>false</bool>
-    </property>
-   </widget>
-   <widget class="QLabel" name="cumm_path_label">
-    <property name="geometry">
-     <rect>
-      <x>70</x>
-      <y>200</y>
-      <width>231</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Arial</family>
-      <pointsize>13</pointsize>
-     </font>
-    </property>
-    <property name="text">
-     <string>Cumulative Path (last 10 min)</string>
     </property>
    </widget>
    <widget class="QCheckBox" name="send_orientation_toggle">
@@ -693,52 +645,9 @@
      <string>Abort Experiment</string>
     </property>
    </widget>
-   <widget class="PlotWidget" name="cumm_path_plotwidget">
-    <property name="geometry">
-     <rect>
-      <x>30</x>
-      <y>220</y>
-      <width>321</width>
-      <height>231</height>
-     </rect>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="cumm_path_checkbox">
-    <property name="geometry">
-     <rect>
-      <x>30</x>
-      <y>450</y>
-      <width>151</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Cumulative Path Plot</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="heading_occ_checkbox">
-    <property name="geometry">
-     <rect>
-      <x>490</x>
-      <y>450</y>
-      <width>151</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Heading Occ. Plot</string>
-    </property>
-   </widget>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>PlotWidget</class>
-   <extends>QGraphicsView</extends>
-   <header>pyqtgraph</header>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
  <designerdata>
