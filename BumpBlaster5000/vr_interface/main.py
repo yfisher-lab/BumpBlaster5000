@@ -83,7 +83,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
         :return:
         '''
 
-        self.teensy_input_serial.write(b'1,0\n')  # see teensy_control.ino
+        self.teensy_input_serial.write(b'0,1\n')  # see teensy_control.ino
         self.start_scan_button.setEnabled(False)
         self.trigger_opto_button.setEnabled(True)
         self.stop_scan_button.setEnabled(True)
@@ -95,7 +95,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
 
         :return:
         '''
-        self.teensy_input_serial.write(b'2,0\n')  # see teensy_control.ino
+        self.teensy_input_serial.write(b'0,2\n')  # see teensy_control.ino
         while self.ft_frames['abort'] is None:
             time.sleep(.01)
 
@@ -123,7 +123,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
 
         :return:
         '''
-        self.teensy_input_serial.write(b'3,0\n')  # see teensy_control.ino
+        self.teensy_input_serial.write(b'0,3\n')  # see teensy_control.ino
 
 
     def toggle_send_orientation(self):
@@ -198,7 +198,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
         while self._isreading_teensy.is_set():
             while srl.inWaiting() > 0:
                 msg = srl.readline().decode('UTF-8').rstrip.split(',')
-                if msg[0] in set(('start', 'abort')):
+                if msg[0] in set(('start', 'opto', 'abort')):
                     self.ft_frames[msg[0]] = int(msg[1])
         srl.close()
 
