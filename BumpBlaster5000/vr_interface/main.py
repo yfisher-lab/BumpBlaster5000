@@ -20,7 +20,7 @@ from .. import params
 # import params
 from . import fictrac_utils as ft_utils
 # import utils
-from ..utils import threaded, multiprocessed
+from ..utils import threaded, pol2cart, numba_histogram
 
 
 class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
@@ -40,11 +40,10 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
         self.trigger_opto_push.clicked.connect(self.trigger_opto)
         
         ## fictrac
-        self.run_ft_evnt = mp.Event()
         self.ft_frames = None
+        self.ft_manager = ft_utils.FicTracSocketManager()
         self.launch_fictrac_toggle.stateChanged.connect(self.toggle_fictrac)
         self._ft_process = None
-        self._ft_manager = ft_utils.FicTracSocketManager()
         # self.save_fictrac_toggle.stateChanged.connect(self.set_fictrac_save_path)
         self.send_orientation_toggle.stateChanged.connect(self.toggle_send_orientation)
         self._send_orientation = threading.Event()
@@ -82,10 +81,10 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
         self.heading_occ_plotwidget.setGeometry(QtCore.QRect(490, 220, 321, 231))
         self.heading_occ_plotitem = self.config_remote_plot(self.heading_occ_plotwidget)
         
-        plot_buffer_time = 600 #seconds
-        self.plot_buffers = {'integrated x': deque(maxlen=int(ft_utils.FICTRAC_FRAME_RATE*plot_buffer_time)),
-                            'integrated y': deque(maxlen=int(ft_utils.FICTRAC_FRAME_RATE*plot_buffer_time)),
-                            'heading': deque(maxlen=int(ft_utils.FICTRAC_FRAME_RATE*plot_buffer_time))}
+        # plot_buffer_time = 600 #seconds
+        # self.plot_buffers = {'integrated x': deque(maxlen=int(ft_utils.FICTRAC_FRAME_RATE*plot_buffer_time)),
+        #                     'integrated y': deque(maxlen=int(ft_utils.FICTRAC_FRAME_RATE*plot_buffer_time)),
+        #                     'heading': deque(maxlen=int(ft_utils.FICTRAC_FRAME_RATE*plot_buffer_time))}
             
         self.cumm_path_checkbox.stateChanged.connect(self.toggle_cumm_path)
         self.heading_occ_checkbox.stateChanged.connect(self.toggle_heading_occ)
@@ -188,26 +187,18 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
         '''
 
         if self.launch_fictrac_toggle.isChecked():
-            # # queue
-            # self.ft_queue = queue.SimpleQueue()
-            # # run fictrac event
-            # self.run_ft_evnt.set()
             # output path
             self.ft_output_path = QFileDialog.getExistingDirectory(self.centralwidget,
-                                                           "FicTrac Output File")
+                                                               "FicTrac Output File")
             #other args
-            os.chdir(self.ft_output_path)
             print(self.ft_output_path)
-            self._ft_manager.open()
-            self._ft_manager.start_reading()
-            self._read_ft_handle = self.read_ft_queue()
+            self.ft_manager.open()
+            self.ft_manager.start_reading(fictrac_output_path=self.ft_output_path)
             
-            self._ft_process = threaded(_run_ft_process(self.ft_queue, self.run_ft_evnt, self.ft_output_path))
+            
         else:
-            
-            # self.run_ft_evnt.clear()
-            self._ft_process.join()
-            self._read_ft_handle.join()
+            self.ft_manager.stop_reading()
+            self.ft_manager.close()
         
     @threaded
     def continuous_read_teensy_com(self):
@@ -229,24 +220,7 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
                     self.ft_frames[msg[0]] = int(msg[1])
         srl.close()
         
-    @threaded
-    def read_ft_queue(self):
-        
-        while self.run_ft_evnt.is_set():
-            # read queue
-            if not self.ft_queue.empty():
-                line = self.ft_queue.get()
-                
-                if self.cumm_path_checkbox.isChecked():
-                    self.plot_buffers['integrated x'].append(line['integrated x'])
-                    self.plot_buffers['integrated y'].append(line['integrated y'])
-                    
-                if self.heading_occ_checkbox.isChecked():
-                    self.plot_buffers['heading'].append(line['heading'])
-                
-                # send heading info to prairie link    
-                if self._send_orientation.is_set():
-                    self.pl_serial.write(f"{line['heading']}\n".encode('UTF-8'))
+   
             
     def update_plots(self):
         '''
@@ -260,12 +234,12 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
             self.plot_heading_occ()
             
     def plot_cumm_path(self):
-        self.cumm_path_plotitem.plot(self.plot_buffers['integrated x'], self.plot_buffers['integrated y'],
+        self.cumm_path_plotitem.plot(self.ft_manager.plot_deques['integrated x'], self.ft_manager.plot_deques['integrated y'],
                                      pen=(200,200,200),clear=True, _callSync='off')
         
     def plot_heading_occ(self):
-        hist, edges = utils.numba_histogram(self.plot_buffers['heading'], 20)
-        x, y = utils.pol2cart(edges[1:],hist)
+        hist, edges = numba_histogram(self.ft_manager.plot_deques['heading'], 20)
+        x, y = pol2cart(edges[1:],hist)
         self.heading_occ_plotitem.plot(x,y, fillLevel=.5,clear=True, _callSync='off')
         
 
@@ -298,11 +272,6 @@ class FLUI(QtWidgets.QMainWindow, ui_gui.Ui_MainWindow):
         
         self.disconnect()
         event.accept()
-
-
-
-def _run_ft_process(ft_queue, run_ft_evnt, output_path):
-    ft_utils.MPFictracSocketManager.run(ft_queue, run_ft_evnt, output_path)
 
 def main():
     app = QApplication(sys.argv)

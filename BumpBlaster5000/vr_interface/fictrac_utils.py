@@ -221,7 +221,7 @@ class FicTracSocketManager:
     """
 
     def __init__(self, fictrac_path=FICTRAC_PATH, config_file=CONFIG_PATH, host='127.0.0.1', port=65413,
-                 columns_to_read=None, multiprocess_queue=False,
+                 columns_to_read=None, plot_buffer_time = 600,
                  ):
         """
 
@@ -250,11 +250,11 @@ class FicTracSocketManager:
         self.ft_buffer = ""
         self.ft_output_path = None
         self._ft_output_handle = None
-        if multiprocess_queue: # deal with threading vs multiprocessing
-            self.ft_queue = mp.SimpleQueue()
-        else:
-            self.ft_queue = queue.SimpleQueue()
+       
+        # self.ft_queue = queue.SimpleQueue()
+        
         self.columns_to_read = columns_to_read
+        self.plot_deques = {k: deque(maxlen=int(FICTRAC_FRAME_RATE*plot_buffer_time)) for k in self.columns_to_read.keys()}
 
     def open(self, timeout = 5):
         '''
@@ -277,20 +277,16 @@ class FicTracSocketManager:
             self.open_socket()
 
 
-    def start_reading(self, fictrac_output_file=os.path.join(os.getcwd(), "fictrac_output.log")):
+    def start_reading(self, fictrac_output_path=None):
         """
 
         :param fictrac_output_file:
         :return:
         """
         # check if output file exists
-        post = 0
-        while os.path.exists(fictrac_output_file):
-            post+=1
-            fictrac_output_file = "%s_%d.log" % (os.path.splitext(fictrac_output_file)[0], post)
+        if fictrac_output_path is not None:
+            os.chdir(fictrac_output_path)
 
-        self.ft_output_path = fictrac_output_file
-        self._ft_output_handle = open(self.ft_output_path, 'w')
         # open output file
         self.reading.set()
         self._reading_thread_handle = self._read_thread()
@@ -305,27 +301,7 @@ class FicTracSocketManager:
         self._reading_thread_handle.join()
         self._reading_thread_handle = None
 
-        self._ft_output_handle.close()
-        self._ft_output_handle = None
-
-        if return_pandas:
-            df = pd.read_csv(self.ft_output_path, sep=',', header=None,
-                               names=('FT', 'frame counter', 'delta rot. x (cam)',
-                                      'delta rot. y (cam)', 'delta rot. z (cam)',
-                                      'delta rot. error', 'delta rot. x (lab)',
-                                      'delta rot. y (lab)', 'delta rot. z (lab)',
-                                      'abs. rot. x (cam)', 'abs. rot. y (cam)',
-                                      'abs. rot. z (cam)', 'abs. rot. x (lab)',
-                                      'abs. rot. y (lab)', 'abs. rot. z (lab)',
-                                      'int. x (lab)', 'int. y (lab)', 'int. z (lab)',
-                                      'movement dir.', 'movement speed', 'int. forward',
-                                      'int. side', 'timestamp', 'sequence counter',
-                                      'delta timestamp', 'alt. timestamp'))
-            # delete self.ft_output_path
-            os.remove(self.ft_output_path)
-
-            return df
-
+    
     def open_socket(self):
         """
 
@@ -364,20 +340,20 @@ class FicTracSocketManager:
             self._reading_thread_handle.join()
             self._reading_thread_handle = None
 
-        time.sleep(.1)
-        _ = [os.remove(_f) for _f in glob(os.path.join(os.getcwd(),"fictrac-*.log"))]
-        _ = [os.remove(_f) for _f in glob(os.path.join(os.getcwd(),"fictrac-*.dat"))]
+        # time.sleep(.1)
+        # _ = [os.remove(_f) for _f in glob(os.path.join(os.getcwd(),"fictrac-*.log"))]
+        # _ = [os.remove(_f) for _f in glob(os.path.join(os.getcwd(),"fictrac-*.dat"))]
 
 
-    def read_ft_queue(self):
-        """
+    # def read_ft_queue(self):
+    #     """
 
-        :return:
-        """
-        try:
-            return self.ft_queue.get()
-        except queue.Empty:
-            return None
+    #     :return:
+    #     """
+    #     try:
+    #         return self.ft_queue.get()
+    #     except queue.Empty:
+    #         return None
 
 
 
@@ -396,10 +372,8 @@ class FicTracSocketManager:
             if ready[0]:
                 single_line = self._process_line()
                 # maybe want to replace queue with just a locked value to speed up plotting
-                self.ft_queue.put(single_line)
-                if not self.plot_buffers is None:
-                    for key in ('integrated x', 'integrated y', 'heading'):
-                        self.plot_buffers[key].append(single_line[key])
+                # self.ft_queue.put(single_line)
+                
             else:
                 pass
 
@@ -435,6 +409,9 @@ class FicTracSocketManager:
 
         # extract fictrac variables
         # (see https://github.com/rjdmoore/fictrac/blob/master/doc/data_header.txt for descriptions)
+        for k,v in self.columns_to_read.items():
+            self.plot_deques[k].append(toks[v])
+            
         return {k: toks[v] for k, v in self.columns_to_read.items()}
 
 
