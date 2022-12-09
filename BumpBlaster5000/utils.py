@@ -108,3 +108,19 @@ def numba_wrapped_histogram(a, bins, bin_edges=None):
     hist /= hist[:-1].sum()
 
     return hist, bin_edges
+
+
+@njit
+def numba_histogram(a, bins, bin_edges=None, norm=True):
+    hist = np.zeros((bins,), dtype=np.float64)
+    if bin_edges is None:
+        bin_edges = get_bin_edges(a, bins)
+
+    for x in a.flat:
+        bin = compute_bin(x, bin_edges)
+        if bin is not None:
+            hist[int(bin)] += 1
+    if norm:
+        hist /= hist.sum()
+
+    return hist, bin_edges

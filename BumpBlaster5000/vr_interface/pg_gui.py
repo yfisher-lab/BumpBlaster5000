@@ -1,6 +1,6 @@
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtWidgets
+from pyqtgraph.Qt import QtWidgets, QtGui, QtCore
 
 
 class WidgetWindow:
@@ -10,6 +10,31 @@ class WidgetWindow:
         
         
         self.layout = pg.LayoutWidget()
+        
+        # set color scheme
+        palette = QtGui.QPalette()
+        # background
+        brush = QtGui.QBrush(QtGui.QColor(36,31,49,255))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Window,brush)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Window,brush)
+        # window text
+        brush = QtGui.QBrush(QtGui.QColor(216, 216, 216))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.WindowText, brush)
+        # push buttons
+        brush = QtGui.QBrush(QtGui.QColor(5, 77, 72))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Button, brush)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Button, brush)
+        brush = QtGui.QBrush(QtGui.QColor(77, 77, 77, 122))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Button, brush)
+        
+        
+        
+        self.layout.setPalette(palette)
         
         # push buttons
         self.start_scan_button = QtWidgets.QPushButton("Start Scan")
@@ -44,6 +69,7 @@ class WidgetWindow:
         self.app.aboutToQuit.connect(self.heading_hist_view.close)
         self.heading_hist_plotitem = self.heading_hist_view.pg.PlotItem(title="Heading Histogram")
         self.heading_hist_plotitem._setProxyOptions(deferGetattr=True)
+        self.heading_hist_plotitem.setXRange(-1*np.pi/16,2*np.pi + np.pi/16)
         self.heading_hist_view.setCentralItem(self.heading_hist_plotitem)
 
         self.current_heading_view = pg.widgets.RemoteGraphicsView.RemoteGraphicsView()
@@ -81,8 +107,7 @@ class WidgetWindow:
         self.layout.resize(1200,500)
         self.layout.show()
         
-    def set_colors(self):
-        pass
+  
     
     
 

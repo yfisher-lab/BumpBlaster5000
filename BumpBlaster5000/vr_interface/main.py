@@ -19,7 +19,7 @@ from .. import params
 # import params
 from . import fictrac_utils as ft_utils
 # import utils
-from ..utils import threaded, pol2cart, numba_wrapped_histogram
+from ..utils import threaded, pol2cart, numba_wrapped_histogram, numba_histogram
 
 
 class BumpBlaster(pg_gui.WidgetWindow):
@@ -222,11 +222,11 @@ class BumpBlaster(pg_gui.WidgetWindow):
         hist, edges = numba_wrapped_histogram(np.array(self.ft_manager.plot_deques['heading']), 20)
 
         
-        x, y = pol2cart(hist, edges)
-        self.heading_hist_plotitem.plot(x,y, brush=(0,0,255,150),
+        # x, y = pol2cart(hist, edges)
+        self.heading_hist_plotitem.plot(hist,edges[1:], brush=(0,0,255,150),
                                         fillLevel=0,clear=True, _callSync='off')
-        self.heading_hist_plotitem.addLine(x=0,pen=.4)
-        self.heading_hist_plotitem.addLine(y=0, pen=.4)
+        # self.heading_hist_plotitem.addLine(x=0,pen=.4)
+        # self.heading_hist_plotitem.addLine(y=0, pen=.4)
 
     def plot_current_heading(self):
 
