@@ -4,8 +4,7 @@ import threading
 import sys
 import time
 import warnings
-import ctypes
-import os
+
 
 import numpy as np
 from PyQt5 import QtCore, QtWidgets, QtGui
@@ -15,7 +14,7 @@ import serial
 
 
 import plugin_viewer
-import BumpBlaster5000.no as no
+import BumpBlaster5000
 from BumpBlaster5000.utils import pol2cart, cart2pol, threaded
 from BumpBlaster5000 import params
 
