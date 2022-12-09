@@ -23,17 +23,15 @@ def threaded(fn):
         return thread
     return wrapper
 
-def multiprocessed(fn):
+def launch_multiprocess(fn, *args, **kwargs):
     '''
 
     :param fn:
     :return:
     '''
-    def wrapper(*args, **kwargs):
-        process = mp.Process(target=fn, args=args, kwargs=kwargs)
-        process.start()
-        return process
-    return wrapper
+    process = mp.Process(target=fn, args=args, kwargs=kwargs)
+    process.start()
+    return process
 
 @njit
 def cart2pol(x, y):
