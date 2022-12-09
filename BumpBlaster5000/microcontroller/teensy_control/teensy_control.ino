@@ -42,7 +42,7 @@ int bk_opto_trig_timestamp;
 const int bk_trig_timeout = 10;
 
 bool opto_countdown_bool = false;
-int opto_coundown_dur = 100;
+int opto_countdown_dur = 100;
 int opto_countdown_timestamp;
 
 bool dac_countdown_bool = false;
@@ -99,12 +99,13 @@ void yield() {} // get rid of hidden arduino yield function
 FASTRUN void loop() { // FASTRUN teensy keyword
     state_machine();
     ft_state();
+    check_pins();
 }
 
 void state_machine() {
-  static int state_cmd_len == -1000;
+  static int state_cmd_len = -1000;
   static int cmd = 0;
-  int val_arr[];
+  static int val_arr[3] = {0, 0, 0};
   // static int val = 0;
 
   recv_state_data();
@@ -112,7 +113,7 @@ void state_machine() {
     strcpy(_state_chars,state_chars);
     if (state_index==0) { // first value is the length of the state machine message
       state_cmd_len = atoi(_state_chars);
-      int val_arr[state_cmd_len];
+//      int val_arr[state_cmd_len];
     } 
     else if (state_index == 1) { // second value is the state to go to in state machine
       cmd = atoi(_state_chars);
@@ -231,11 +232,8 @@ void execute_state(int cmd, int val_arr[]) {
 
       }
       break;
-
-    
-
   }
-  check_pins();
+  
 }
 
 void trig_opto() {
@@ -274,7 +272,7 @@ void check_pins() {
 
   // flip opto up after specified delay
   if (opto_countdown_bool) {
-    if ((curr_timestamp-opto_countdown_timestamp)>opto_coundown_dur) {
+    if ((curr_timestamp-opto_countdown_timestamp)>opto_countdown_dur) {
       trig_opto();
       opto_countdown_bool = false;
 
@@ -284,8 +282,8 @@ void check_pins() {
   // set dac values after specified delay
   if (dac_countdown_bool) {
     if ((curr_timestamp-dac_countdown_timestamp) > dac_countdown_dur) {
-      heading_dac.setVoltage(dac_countdown_heading);
-      index_dac.setVoltage(dac_countdown_index);
+      heading_dac.setVoltage(dac_countdown_heading, false);
+      index_dac.setVoltage(dac_countdown_index, false);
       dac_countdown_bool = false;
     }
   }
@@ -402,4 +400,3 @@ void ft_state_machine() {
 //   bk_state_machine(_cmd, _val);
     
 // }
-
