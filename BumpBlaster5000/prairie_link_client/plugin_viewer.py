@@ -1,12 +1,4 @@
-# -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file './plugin_viewer.ui'
-#
-# Created by: PyQt5 UI code generator 5.9.2
-#
-# WARNING! All changes made in this file will be lost!
-
-# from PyQt5 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtWidgets, QtGui
 
