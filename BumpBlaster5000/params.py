@@ -1,10 +1,8 @@
 FT_PC_PARAMS = {
     'teensy_input_com': 'COM11',
     'teensy_output_com': 'COM12',
-    'pl_widget_com': 'COM13',
-    'baudrate': 115200,  # check that this will work
-    'flea3_serial': 13192198,
-    'empty': []
+    'pl_com': 'COM13',
+    'baudrate': 115200,  
 }
 
 PL_PC_PARAMS = {
