@@ -79,8 +79,12 @@ class MainWindow(object):
         # bump plots
         self.bump_plot = pg.PlotWidget(title="Bump Dynamics")
         self.offset_plot = pg.PlotWidget(title = "Bump Offset Histogram")
+        
+        self.set_layout()
+        self.layout.show()
 
         
+    def set_layout(self):
         self.layout.addWidget(self._num_slices_label,row=0, col=0)
         self.layout.addWidget(self.num_slices_input, row=0, col=1)
         self.layout.addWidget(self.start_rrds_button, row=0, col=2)
@@ -118,12 +122,16 @@ class MainWindow(object):
         self.layout.addWidget(self.read_heading_button, row=6, col=9)
         self.layout.addWidget(self.remote_plot_button, row=6, col=10)
         
-        self.layout.addWidget(self.bump_plot, row=8, col=0, rowspan=3, colspan=6)
+        self.layout.addWidget(self.bump_plot, row=8, col=0, rowspan=3, colspan=7)
         self.layout.addWidget(self.offset_plot, row=8, col=8, rowspan=3, colspan=4)
         
+        for col in range(12):
+            self.layout.layout.setColumnStretch(col,1)
+        for row in range(9):
+            self.layout.layout.setRowStretch(row,1)
         
         self.layout.resize(1200,700)
-        self.layout.show()
+        
         
     def set_palette(self):
         # set color scheme
@@ -153,6 +161,62 @@ class RemotePlottingWindow(object):
     def __init__(self):
         self.app = pg.mkQApp("Remote Plotting Window")
         
+        self.layout = pg.LayoutWidget()
+        self.set_palette()
+        
+        # plots 
+        self.ch1_plot = pg.PlotWidget(title="Ch1")
+        self.ch2_plot = pg.PlotWidget(title="Ch2")
+        self.bump_plot = pg.PlotWidget(title="BumpPlot")
+        self.offset_plot = pg.PlotWidget(title="Offset Histogram")
+        
+        
+        
+        self.layout.addWidget(self.ch1_plot,row=0, col=0, rowspan=1, colspan=3)
+        self.layout.addWidget(self.ch2_plot,row=0, col=3, rowspan=1, colspan=3)
+        self.layout.addWidget(self.bump_plot,row=1, col=0, colspan=4, rowspan=1)
+        self.layout.addWidget(self.offset_plot, row=1, col=4,colspan=2)
+        
+        
+        for col in range(6):
+            self.layout.layout.setColumnStretch(col,2)
+        self.layout.layout.setRowStretch(0,2)
+        self.layout.layout.setRowStretch(1,1)
+        
+        
+        self.ch2_plot.setXLink(self.ch1_plot)
+        self.bump_plot.setXLink(self.ch1_plot)
+        self.bump_plot.setXLink(self.ch1_plot)
+        
+        self.layout.resize(1000,600)
+        self.layout.show()
+        
+    def set_palette(self):
+        # set color scheme
+        palette = QtGui.QPalette()
+        # background
+        brush = QtGui.QBrush(QtGui.QColor(36,31,49,255))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Window,brush)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Window,brush)
+        # window text
+        brush = QtGui.QBrush(QtGui.QColor(216, 216, 216))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.WindowText, brush)
+        # push buttons
+        brush = QtGui.QBrush(QtGui.QColor(5, 77, 72))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Button, brush)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Button, brush)
+        brush = QtGui.QBrush(QtGui.QColor(77, 77, 77, 122))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Button, brush)
+        self.layout.setPalette(palette)
+        
+        
+        
 if __name__ == '__main__':
     mw = MainWindow()
+    rpw = RemotePlottingWindow()
     pg.exec()
