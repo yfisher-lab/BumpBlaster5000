@@ -22,6 +22,7 @@ class MainWindow(object):
         
         
         
+        
         self.layout.addWidget(self.num_slices_label)
         self.layout.addWidget(self.num_slices_input)
         
@@ -36,5 +37,5 @@ class RemotePlottingWindow(object):
         self.app = pg.mkQApp("Remote Plotting Window")
         
 if __name__ == '__main__':
-    ww = MainWindow()
+    mw = MainWindow()
     pg.exec()
