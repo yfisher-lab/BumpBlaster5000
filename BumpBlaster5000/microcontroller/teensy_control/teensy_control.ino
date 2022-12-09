@@ -4,6 +4,9 @@ char state_chars[num_chars];
 char _state_chars[num_chars];
 bool new_state = false;
 int state_index = 0;
+int val_arr[80]; 
+
+
 // const int state_num_vals = 2;
 
 bool closed_loop = true;
@@ -50,6 +53,12 @@ int dac_countdown_dur = 100;
 int dac_countdown_timestamp;
 int dac_countdown_heading;
 int dac_countdown_index;
+
+bool multiple_points = false;
+int n_points;
+int current_point;
+int next_point_time;
+int current_point_timestamp;
 
 #define BKSERIAL Serial6 // update to current pin settings
 
@@ -105,7 +114,7 @@ FASTRUN void loop() { // FASTRUN teensy keyword
 void state_machine() {
   static int state_cmd_len = -1000;
   static int cmd = 0;
-  static int val_arr[3] = {0, 0, 0};
+  
   // static int val = 0;
 
   recv_state_data();
@@ -124,7 +133,7 @@ void state_machine() {
     
     state_index +=1; // update index
     if ((state_index-2) == state_cmd_len) { // if reached end of state machine message
-      execute_state(cmd, val_arr);
+      execute_state(cmd, state_cmd_len);
       state_index = 0;
     }
     new_state = false;
@@ -156,7 +165,7 @@ void recv_state_data() { // receive USB1 data, ov
   }
 }
 
-void execute_state(int cmd, int val_arr[]) {
+void execute_state(int cmd, int cmd_len) {
 
   switch(cmd){
     case 0: // do nothing
@@ -212,28 +221,57 @@ void execute_state(int cmd, int val_arr[]) {
       break;
 
     case 9: // set heading and index dac, trigger opto with specified delay
-      if (val_arr[2]>=0) {
-        heading_dac.setVoltage(val_arr[0], false);
-        index_dac.setVoltage(val_arr[1],false);
+      // heading, index, opto_bool, opto_delay
+      run_point(val_arr[0], val_arr[1], val_arr[2], val_arr[3]);
+      break;
+
+    case 10: // run list of points
+     // each point: heading, index, opto_bool, opto_delay, combined_dur
+      multiple_points = true;
+      n_points = cmd_len/5;
+      current_point = 0;
       
-        opto_countdown_bool = true;
-        opto_countdown_dur = val_arr[2];
-        opto_countdown_timestamp = millis();
+      run_point(val_arr[0], val_arr[1], val_arr[2], val_arr[3]);
+      
+      next_point_time = val_arr[4];
+      current_point_timestamp = millis();
+      break;
+    
+
+  }
+  
+
+
+}
+
+
+// heading, index, opto_bool, opto_delay
+void run_point(int _heading, int _index, int _opto_bool, int _opto_delay) {
+  if _opto_delay>=0 {
+        heading_dac.setVoltage(_heading, false);
+        index_dac.setVoltage(_index,false);
+
+        if (_opto_bool>0) {
+          opto_countdown_bool = true;
+          opto_countdown_delay = _opto_delay;
+          opto_countdown_timestamp = millis();
+        }
+        
       } else {
-        trig_opto();
+
+        if (_opto_bool>0) {
+          trig_opto();
+        }
 
         dac_countdown_bool = true;
-        dac_countdown_dur = -1*val_arr[2];
+        dac_countdown_delay = -1*_opto_delay;
         dac_countdown_timestamp = millis();
 
-        dac_countdown_heading = val_arr[0];
-        dac_countdown_index = val_arr[1];
+        dac_countdown_heading = _heading;
+        dac_countdown_index = _index;
         
 
       }
-      break;
-  }
-  
 }
 
 void trig_opto() {
@@ -287,6 +325,23 @@ void check_pins() {
       dac_countdown_bool = false;
     }
   }
+
+
+  // deal with multiple points
+
+  if (multiple_points) {
+    if (current_point < n_points){
+      if ((current_point_timestamp - curr_timestamp)>next_point_time) {
+        va_index = (current_point + 1) * 5;
+        run_point(val_arr[va_index], val_arr[va_index+1], val_arr[va_index+2], val_arr[va_index+3]);
+        next_point_time = val_arr[va_index+4];
+        current_point++;
+      }
+    } else {
+      multiple_points = false;
+    }
+  }
+
 }
 
 

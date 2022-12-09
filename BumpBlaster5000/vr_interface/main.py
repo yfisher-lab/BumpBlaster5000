@@ -60,6 +60,8 @@ class BumpBlaster(pg_gui.WidgetWindow):
             self.teensy_input_serial = serial.Serial(self._params['teensy_input_com'], baudrate=self._params['baudrate'])
         except serial.SerialException:
             raise Exception("teensy input serial port %s couldn't be open" % self._params['teensy_input_com'])
+        self.teensy_input_queue = mp.SimpleQueue()
+        
 
         # start thread to read outputs from teensy
         self._isreading_teensy = threading.Event()
@@ -179,7 +181,12 @@ class BumpBlaster(pg_gui.WidgetWindow):
                     self.pl_serial.write(f"{heading}\n".encode('UTF-8'))
 
 
-            
+    @threaded
+    def write_to_teensy_input_com(self):
+        while self._isreading_teensy.set():
+            if not self.teensy_input_queue.empty():
+                self.teensy_input_serial.write(self.teensy_input_queue.get())
+    
 
         
     @threaded
