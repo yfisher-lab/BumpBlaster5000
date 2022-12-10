@@ -15,10 +15,7 @@ from pyqtgraph.Qt.QtWidgets import QFileDialog
 import serial
 
 from . import pg_gui
-import gui
-from .camera import Flea3Cam
-from . import ui_gui
-from .. import params
+from .. import params, shared_memory
 # import params
 from . import fictrac_utils as ft_utils
 # import utils
@@ -74,15 +71,16 @@ class BumpBlaster(pg_gui.WidgetWindow):
             time.sleep(.01)
 
         #
+        self.plot_deques = {'integrated x': None,
+                            'integrated y': None,
+                            'heading': None}
         self.reset_plots_button.clicked.connect(self.ft_manager.reset_plot_dequeus)
         #
-        self.cumm_path_timer = QtCore.QTimer()
-        self.cumm_path_timer.timeout.connect(self.plot_cumm_path)
-        self.cumm_path_timer.start()
-
-        self.heading_hist_timer = QtCore.QTimer()
-        self.heading_hist_timer.timeout.connect(self.plot_heading_hist)
-        self.heading_hist_timer.start()
+        
+        self.plot_update_timer = QtCore.QTimer()
+        self.plot_update_timer.timeout.connect(self.update_plots)
+        self.plot_update_timer.start(30)
+        
     
         _, _ = numba_histogram(np.linspace(0,10), 5)
         _, _ = pol2cart(0,0)
@@ -174,6 +172,8 @@ class BumpBlaster(pg_gui.WidgetWindow):
             self.ft_manager.open()
             self.ft_manager.start_reading(output_path=self.ft_output_path)
             self._pl_serial_thread = self.write_to_pl_com()
+            for k in self.plot_deques.keys():
+                self.plot_deques[k] = shared_memory.CircularFlatBuffer(int(450*600), name = k).connect()
             
             
         else:
@@ -231,11 +231,11 @@ class BumpBlaster(pg_gui.WidgetWindow):
             # self.plot_current_heading()
             
     def plot_cumm_path(self):
-        self.cumm_path_plotitem.plot(self.ft_manager.plot_deques['integrated x'], self.ft_manager.plot_deques['integrated y'],
+        self.cumm_path_plotitem.plot(self.plot_deques['integrated x'], self.plot_deques['integrated y'],
                                      clear=True, _callSync='off')
         
     def plot_heading_hist(self):
-        headings = np.array(self.ft_manager.plot_deques['heading'])
+        headings = self.plot_deques['heading']
         hist, edges = numba_histogram(headings, 20)
 
         # self.plot_current_heading(headings[-1])
