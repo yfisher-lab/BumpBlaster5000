@@ -257,6 +257,8 @@ class PMTBuffer:
 
                 # update
                 self.buffer_index = (self.buffer_index + new_buff_ind) % self.max_buffer
+                self.frame_sync = self.buffer_index-1
+                
                 self.curr_flat_index = 0
 
                 flat_data_idx = new_flat_data_idx
@@ -269,10 +271,10 @@ class PMTBuffer:
 
 
     def latest_zstack(self):
-        return self.buff[self.buffer_index - 1, :, :, :, :, :]
+        return self.buff[self.frame_sync, :, :, :, :, :]
 
     def latest_n_zstacks(self, n=8):
-        return self.buff[range(self.buffer_index - 1 - n, self.buffer_index - 1), :, :, :, :, :]
+        return self.buff[range(self.frame_sync - 1 - n, self.frame_sync - 1), :, :, :, :, :]
 
 
 @njit
