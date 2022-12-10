@@ -49,7 +49,7 @@ int opto_countdown_dur = 100;
 int opto_countdown_timestamp;
 
 bool dac_countdown_bool = false;
-int dac_countdown_dur = 100;
+int dac_countdown_delay = 100;
 int dac_countdown_timestamp;
 int dac_countdown_heading;
 int dac_countdown_index;
@@ -109,6 +109,7 @@ FASTRUN void loop() { // FASTRUN teensy keyword
     state_machine();
     ft_state();
     check_pins();
+    check_pins();
 }
 
 void state_machine() {
@@ -122,6 +123,7 @@ void state_machine() {
     strcpy(_state_chars,state_chars);
     if (state_index==0) { // first value is the length of the state machine message
       state_cmd_len = atoi(_state_chars);
+//      int val_arr[state_cmd_len];
 //      int val_arr[state_cmd_len];
     } 
     else if (state_index == 1) { // second value is the state to go to in state machine
@@ -153,7 +155,7 @@ void recv_state_data() { // receive USB1 data, ov
       state_chars[ndx] = '\0'; // terminate string
       ndx = 0;
       new_state = true;
-    }
+    } 
     else {
       state_chars[ndx] = rc;
       ndx++;
@@ -288,6 +290,7 @@ void trig_opto() {
 
 
 void check_pins() {
+  static int va_index=0;
   // flip start down
   int curr_timestamp = millis();
   if (bk_scan_trig_state & ((curr_timestamp - bk_scan_trig_timestamp) > bk_trig_timeout)) {
@@ -310,7 +313,7 @@ void check_pins() {
 
   // flip opto up after specified delay
   if (opto_countdown_bool) {
-    if ((curr_timestamp-opto_countdown_timestamp)>opto_countdown_dur) {
+    if ((curr_timestamp-opto_countdown_timestamp)>opto_countdown_delay) {
       trig_opto();
       opto_countdown_bool = false;
 
@@ -319,7 +322,7 @@ void check_pins() {
 
   // set dac values after specified delay
   if (dac_countdown_bool) {
-    if ((curr_timestamp-dac_countdown_timestamp) > dac_countdown_dur) {
+    if ((curr_timestamp-dac_countdown_timestamp) > dac_countdown_delay) {
       heading_dac.setVoltage(dac_countdown_heading, false);
       index_dac.setVoltage(dac_countdown_index, false);
       dac_countdown_bool = false;

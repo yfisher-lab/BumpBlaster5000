@@ -38,7 +38,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
         self.trigger_opto_button.clicked.connect(self.trigger_opto)
         
         ## fictrac
-        self.ft_frames = None
+        self.ft_frames = {'start': [], 'opto': [], 'abort': []}
         self.ft_manager = ft_utils.FicTracSocketManager()
         self.launch_fictrac_checkbox.stateChanged.connect(self.toggle_fictrac)
         self._ft_process = None
@@ -73,11 +73,16 @@ class BumpBlaster(pg_gui.WidgetWindow):
         #
         self.reset_plots_button.clicked.connect(self.ft_manager.reset_plot_dequeus)
         #
-        self.plot_update_timer = QtCore.QTimer()
-        self.plot_update_timer.timeout.connect(self.update_plots)
-        self.plot_update_timer.start(plot_timeout)
+        self.cumm_path_timer = QtCore.QTimer()
+        self.cumm_path_timer.timeout.connect(self.plot_cumm_path)
+        self.cumm_path_timer.start()
+
+        self.heading_hist_timer = QtCore.QTimer()
+        self.heading_hist_timer.timeout.connect(self.plot_heading_hist)
+        self.heading_hist_timer.start()
     
-    
+        _, _ = numba_histogram(np.linspace(0,10), 5)
+        _, _ = pol2cart(0,0)
 
     def start_scan(self):
         '''
@@ -90,7 +95,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
         self.trigger_opto_button.setEnabled(True)
         self.stop_scan_button.setEnabled(True)
 
-        self.ft_frames = {'start': None, 'abort': None}
+        # self.ft_frames = {'start': None, 'opto': None, 'abort': None}
 
     def stop_scan(self):
         '''
@@ -132,7 +137,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
         
         if self.send_orientation_checkbox.isChecked():
             try: 
-                self.pl_serial = serial.Serial(self._params['prairie_link_com'], baudrate = self._params['baudrate'])
+                self.pl_serial = serial.Serial(self._params['pl_com'], baudrate = self._params['baudrate'])
             except serial.SerialException:
                 raise Exception("prairie link serial port %s couldn't be opened" % self._params['prairie_link_com'])
             self._send_orientation.set()
@@ -156,14 +161,15 @@ class BumpBlaster(pg_gui.WidgetWindow):
         '''
 
         if self.launch_fictrac_checkbox.isChecked():
+            
             # output path
-            self.ft_output_path = QFileDialog.getOpenFileName(self.layout,
-                                                               "FicTrac Output File")
+            self.ft_output_path = QFileDialog.getSaveFileName(self.layout,
+                                                               "FicTrac Output File")[0]
             #other args
             print(self.ft_output_path)
             #TODO: make this an actual filename rather than a directory and extract directory
             self.ft_manager.open()
-            self.ft_manager.start_reading(fictrac_output_path=self.ft_output_path)
+            self.ft_manager.start_reading(output_path=self.ft_output_path)
             self._pl_serial_thread = self.write_to_pl_com()
             
             
@@ -204,9 +210,9 @@ class BumpBlaster(pg_gui.WidgetWindow):
 
         while self._isreading_teensy.is_set():
             while srl.inWaiting() > 0:
-                msg = srl.readline().decode('UTF-8').rstrip.split(',')
+                msg = srl.readline().decode('UTF-8').rstrip().split(',')
                 if msg[0] in set(('start', 'opto', 'abort')):
-                    self.ft_frames[msg[0]] = int(msg[1])
+                    self.ft_frames[msg[0]].append(int(msg[1]))
         srl.close()
 
             
@@ -218,30 +224,34 @@ class BumpBlaster(pg_gui.WidgetWindow):
 
         if self.ft_manager.reading.is_set():
             self.plot_cumm_path()
-            self.plot_heading_hist()
-            self.plot_current_heading()
+            # self.plot_heading_hist()
+            # self.plot_current_heading()
             
     def plot_cumm_path(self):
         self.cumm_path_plotitem.plot(self.ft_manager.plot_deques['integrated x'], self.ft_manager.plot_deques['integrated y'],
                                      clear=True, _callSync='off')
         
     def plot_heading_hist(self):
-        hist, edges = numba_wrapped_histogram(np.array(self.ft_manager.plot_deques['heading']), 20)
+        headings = np.array(self.ft_manager.plot_deques['heading'])
+        hist, edges = numba_histogram(headings, 20)
 
-        
+        # self.plot_current_heading(headings[-1])
+
+        # print(hist,edges)
         # x, y = pol2cart(hist, edges)
-        self.heading_hist_plotitem.plot(hist,edges[1:], brush=(0,0,255,150),
-                                        fillLevel=0,clear=True, _callSync='off')
+        self.heading_hist_plotitem.plot(edges[1:], hist, brush=(0,0,255,150),
+                                        fillLevel=0, clear=True, _callSync='off')
+        self.heading_hist_plotitem.plot([headings[-1], headings[-1]], [0,.2], pen=(255,0,0))
         # self.heading_hist_plotitem.addLine(x=0,pen=.4)
         # self.heading_hist_plotitem.addLine(y=0, pen=.4)
 
-    def plot_current_heading(self):
+    def plot_current_heading(self,heading):
 
-        x,y = pol2cart(1,self.ft_manager.plot_deques['heading'][-1])
+        x,y = pol2cart(1.,heading)
         self.current_heading_plotitem.plot([0,x],[0,y], pen=(200, 200, 200), symbolBrush=(255, 0, 0),
                      symbolPen='w', clear = True, _callSync='off')
-        self.addLine(x=0, pen=.4)
-        self.addLine(y=0, pen=.4)
+        # self.current_heading_plotitem.addLine(x=0, pen=.4)
+        # self.current_heading_plotitem.addLine(y=0, pen=.4)
 
         
         
