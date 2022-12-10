@@ -1,31 +1,19 @@
-import os
-import threading
+import os, threading, queue, time, pickle
 import multiprocessing as mp
-import queue
-import time
-import sys
-from collections import deque
-import pickle
 
 import numpy as np
 import pyqtgraph as pg
 from pyqtgraph import QtCore, QtGui, Qt
 from pyqtgraph.Qt.QtWidgets import QFileDialog
-
 import serial
 
-from . import pg_gui
-from .. import params, shared_memory
-# import params
+from .. import params, shared_memory, experiment_protocols
+from ..utils import threaded, numba_histogram, launch_multiprocess
 from . import fictrac_utils as ft_utils
-# import utils
-from ..utils import threaded, pol2cart, numba_wrapped_histogram, numba_histogram
-
+from . import pg_gui
 
 class BumpBlaster(pg_gui.WidgetWindow):
-    
-    
-    
+
     def __init__(self, plot_timeout = 30):
         super().__init__()
 
@@ -45,12 +33,11 @@ class BumpBlaster(pg_gui.WidgetWindow):
         self.send_orientation_checkbox.stateChanged.connect(self.toggle_send_orientation)
         self._send_orientation = threading.Event()
 
-        #TODO: Set up prairie link serial, deal with send orientation checkbox
         self.pl_serial = None
         
-
-        #TODO: deal with these functions
-        self.load_exp_button.clicked.connect(self.set_exp)
+        self.exp_combobox.currentTextChanged.connect(self.set_exp)
+        self.exp_func = None
+        self.exp_process = None
         self.run_exp_button.clicked.connect(self.run_exp)
         self.abort_exp_button.clicked.connect(self.abort_exp)
 
@@ -81,9 +68,8 @@ class BumpBlaster(pg_gui.WidgetWindow):
         self.plot_update_timer.timeout.connect(self.update_plots)
         self.plot_update_timer.start(30)
         
-    
+        # run once for compiling
         _, _ = numba_histogram(np.linspace(0,10), 5)
-        _, _ = pol2cart(0,0)
 
     def start_scan(self):
         '''
@@ -147,13 +133,17 @@ class BumpBlaster(pg_gui.WidgetWindow):
             self.pl_serial.close()
         
     def set_exp(self):
-        pass
+
+        exec(f"from experiment_protocols import {self.exp_combobox.currentText} as current_exp")
+        self.exp_fun = current_exp.run
+        
 
     def run_exp(self):
-        pass
+        self.exp_process = launch_multiprocess(self.exp_fun, self.teensy_input_queue)
 
     def abort_exp(self):
-        pass
+        self.teensy_input_queue.put(b'0,11\n')
+        self.exp_process.kill()
         
     def toggle_fictrac(self):
         '''
@@ -173,7 +163,8 @@ class BumpBlaster(pg_gui.WidgetWindow):
             self.ft_manager.start_reading()
             self._pl_serial_thread = self.write_to_pl_com()
             for k in self.plot_deques.keys():
-                self.plot_deques[k] = shared_memory.CircularFlatBuffer(int(450*600), name = k).connect()
+                #ToDo: remove hard coding of buffer size
+                self.plot_deques[k] = shared_memory.CircularFlatBuffer(int(45*600), name = k).connect()
             
             
         else:
@@ -226,38 +217,25 @@ class BumpBlaster(pg_gui.WidgetWindow):
         '''
 
         if self.ft_manager.reading.is_set():
+
             self.plot_cumm_path()
             self.plot_heading_hist()
-            # self.plot_current_heading()
+            
             
     def plot_cumm_path(self):
-        self.cumm_path_plotitem.plot(self.plot_deques['integrated x'].buff[self.plot_deques['integrated y'].first_filled_index[0]:], self.plot_deques['integrated y'].vals,
-                                     clear=True, _callSync='off')
+        with self.ft_manager._ft_buffer_lock():
+            self.cumm_path_plotitem.plot(self.plot_deques['integrated x'].vals, self.plot_deques['integrated y'].vals,
+                                         clear=True, _callSync='off')
         
     def plot_heading_hist(self):
-        headings = self.plot_deques['heading'].vals
-        hist, edges = numba_histogram(headings, 20)
 
-        # self.plot_current_heading(headings[-1])
+        with self.ft_manager._ft_buffer_lock():
+            headings = self.plot_deques['heading'].vals
+            hist, edges = numba_histogram(headings, 20)
 
-        # print(hist,edges)
-        # x, y = pol2cart(hist, edges)
         self.heading_hist_plotitem.plot(edges[1:], hist, brush=(0,0,255,150),
                                         fillLevel=0, clear=True, _callSync='off')
-        self.heading_hist_plotitem.plot([headings[-1], headings[-1]], [0,.2], pen=(255,0,0))
-        # self.heading_hist_plotitem.addLine(x=0,pen=.4)
-        # self.heading_hist_plotitem.addLine(y=0, pen=.4)
-
-    def plot_current_heading(self,heading):
-
-        x,y = pol2cart(1.,heading)
-        self.current_heading_plotitem.plot([0,x],[0,y], pen=(200, 200, 200), symbolBrush=(255, 0, 0),
-                     symbolPen='w', clear = True, _callSync='off')
-        # self.current_heading_plotitem.addLine(x=0, pen=.4)
-        # self.current_heading_plotitem.addLine(y=0, pen=.4)
-
-        
-        
+        self.heading_hist_plotitem.plot([headings[-1], headings[-1]], [0,.2], pen=(255,0,0), _callSync='off')
 
 
     def closeEvent(self, event: QtGui.QCloseEvent):
