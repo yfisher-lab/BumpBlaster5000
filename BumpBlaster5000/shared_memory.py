@@ -144,6 +144,79 @@ class SharedArray:
         self.buff = None
 
 
+
+
+class CircularFlatBuffer:
+    
+    def __init__(self,length, dtype = np.float, name = 'deque'):
+        self._creator = None
+        
+        self.length = length
+        
+        self.name = name
+        self.dtype = dtype
+        
+        
+        self.first_filled_index = None
+        self._first_filled_inst = None
+        
+        self.buff = None
+        self._buff_inst = None
+        
+    def create(self):
+        self._buffer_inst = SharedArray(self.shape,
+                                        name=self.name,
+                                        dtype=self.dtype).create()
+        self.buff = self._buffer_inst.buff
+
+        self._first_filled_inst = SharedArray((1,),
+                                            name=self.name+'_first_filled_inst',
+                                            dtype=int).create()
+        self.first_filled_index = self._frame_filled_inst.buff
+
+        self._creator = True
+        return self
+
+    def connect(self):
+        self._buffer_inst = SharedArray(self.shape,
+                                        name=self.name,
+                                        dtype=self.dtype).connect()
+        self.buff = self._buffer_inst.buff
+
+        self._first_filled_inst = SharedArray((1,),
+                                            name=self.name+'_first_filled_inst',
+                                            dtype=int).connect()
+        self.first_filled_index = self._first_filled_inst.buff
+
+        self._creator = False
+        return self
+
+    def close(self, suppress_warning=False):
+        self._buffer_inst.close(suppress_warning=suppress_warning)
+        self._first_filled_inst.close(suppress_warning=suppress_warning)
+
+    def __del__(self):
+        self.close(suppress_warning=True)
+        
+    def append(self,val):
+        self.buff[:-1] = self.buff[1:]
+        self.buff[-1] = val
+        self.first_filled_index = np.minimum(self.first_filled_index-1,0)
+        
+    def reset(self):
+        self.first_filled_index = self.length-1
+    
+    @property
+    def vals(self):
+        return self.buff[self.first_filled_index:]
+    
+    
+        
+        
+        
+        
+        
+
 class PMTBuffer:
 
     def __init__(self, shape, names=None, dtype=np.int16,
