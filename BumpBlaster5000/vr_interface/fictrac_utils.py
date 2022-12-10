@@ -103,11 +103,20 @@ class FicTracSocketManager:
 
         
 
-    def open(self, timeout = 5):
+    def open(self, timeout = 5, output_path=None):
         '''
 
         :return:
         '''
+
+        if output_path is not None:
+            output_dir, _ = os.path.split(output_path)
+            os.chdir(output_dir)
+
+            self.ft_output_path = output_path
+            self._ft_output_handle = open(output_path,'wb')
+
+
         self.ft_subprocess.open()
         tic = time.perf_counter()
         print('Waiting for FicTrac to finish openiing')
@@ -124,19 +133,14 @@ class FicTracSocketManager:
             self.open_socket()
 
 
-    def start_reading(self, output_path=None):
+    def start_reading(self):
         """
 
         :param fictrac_output_file:
         :return:
         """
         # check if output file exists
-        if output_path is not None:
-            output_dir, filename = os.path.split(output_path)
-            os.chdir(output_dir)
-
-            self.ft_output_path = output_path
-            self._ft_output_handle = open(output_path,'wb')
+        
 
 
         

@@ -169,8 +169,8 @@ class BumpBlaster(pg_gui.WidgetWindow):
             #other args
             print(self.ft_output_path)
             #TODO: make this an actual filename rather than a directory and extract directory
-            self.ft_manager.open()
-            self.ft_manager.start_reading(output_path=self.ft_output_path)
+            self.ft_manager.open(output_path=self.ft_output_path)
+            self.ft_manager.start_reading()
             self._pl_serial_thread = self.write_to_pl_com()
             for k in self.plot_deques.keys():
                 self.plot_deques[k] = shared_memory.CircularFlatBuffer(int(450*600), name = k).connect()
@@ -227,15 +227,15 @@ class BumpBlaster(pg_gui.WidgetWindow):
 
         if self.ft_manager.reading.is_set():
             self.plot_cumm_path()
-            # self.plot_heading_hist()
+            self.plot_heading_hist()
             # self.plot_current_heading()
             
     def plot_cumm_path(self):
-        self.cumm_path_plotitem.plot(self.plot_deques['integrated x'], self.plot_deques['integrated y'],
+        self.cumm_path_plotitem.plot(self.plot_deques['integrated x'].buff[self.plot_deques['integrated y'].first_filled_index[0]:], self.plot_deques['integrated y'].vals,
                                      clear=True, _callSync='off')
         
     def plot_heading_hist(self):
-        headings = self.plot_deques['heading']
+        headings = self.plot_deques['heading'].vals
         hist, edges = numba_histogram(headings, 20)
 
         # self.plot_current_heading(headings[-1])
