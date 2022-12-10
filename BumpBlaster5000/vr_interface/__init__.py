@@ -2,7 +2,7 @@
 # from BumpBlaster5000 import params, utils
 
 from .. import params, utils
-from ..utils import multiprocessed, threaded
+from ..utils import threaded
 
-from . import fictrac_utils, ui_gui, main
+from . import fictrac_utils, pg_gui, main
 

@@ -98,7 +98,7 @@ class FicTracSocketManager:
         self.plot_deques = {k: deque(maxlen=int(FICTRAC_FRAME_RATE*plot_buffer_time)) for k in self.columns_to_read.keys()}
         for k, v in self.plot_deques.items():
             v.append(0)
-        self._plot_deque_lock = threding.Lock()
+        self._plot_deque_lock = threading.Lock()
 
         
 
@@ -259,7 +259,7 @@ class FicTracSocketManager:
 
             # print to output file
             #TODO: put this back in after dealing with filenames
-            self._ft_output_handle.writelines([str(self.ft_buffer),])
+            self._ft_output_handle.writelines([self.ft_buffer.encode('UTF-8'),])
             self.ft_buffer = self.ft_buffer[endline + 1:]  # delete first frame
 
         # extract fictrac variables
@@ -278,6 +278,7 @@ class FicTracSocketManager:
 
         with self._plot_deque_lock:
             for k,v in self.columns_to_read.items():
-                v.clear().append(0)
+                self.plot_deques[k].clear()
+                self.plot_deques[k].append(0)
 
 

@@ -23,17 +23,15 @@ def threaded(fn):
         return thread
     return wrapper
 
-def multiprocessed(fn):
+def launch_multiprocess(fn, *args, **kwargs):
     '''
 
     :param fn:
     :return:
     '''
-    def wrapper(*args, **kwargs):
-        process = mp.Process(target=fn, args=args, kwargs=kwargs)
-        process.start()
-        return process
-    return wrapper
+    process = mp.Process(target=fn, args=args, kwargs=kwargs)
+    process.start()
+    return process
 
 @njit
 def cart2pol(x, y):
@@ -104,8 +102,8 @@ def numba_wrapped_histogram(a, bins, bin_edges=None):
         bin = compute_bin(x, bin_edges)
         if bin is not None:
             hist[int(bin)] += 1
-    hist[-1]=hist[0]
-    hist /= hist[:-1].sum()
+    # hist[-1]=hist[0]
+    # hist /= hist[:-1].sum()
 
     return hist, bin_edges
 
@@ -120,6 +118,7 @@ def numba_histogram(a, bins, bin_edges=None, norm=True):
         bin = compute_bin(x, bin_edges)
         if bin is not None:
             hist[int(bin)] += 1
+
     if norm:
         hist /= hist.sum()
 
