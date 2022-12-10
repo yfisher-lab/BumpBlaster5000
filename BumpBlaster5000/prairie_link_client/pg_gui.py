@@ -17,6 +17,7 @@ class MainWindow(object):
         
         # begin read raw data stream
         self.start_rrds_button = QtWidgets.QPushButton("Begin ReadRawDataStream")
+        self.end_rrds_button = QtWidgets.QPushButton("End ReadRawDataStream")
         
         # ch 1 viewing
         self.ch1_set_active = QtWidgets.QCheckBox("Ch1 Active")
@@ -88,6 +89,7 @@ class MainWindow(object):
         self.layout.addWidget(self._num_slices_label,row=0, col=0)
         self.layout.addWidget(self.num_slices_input, row=0, col=1)
         self.layout.addWidget(self.start_rrds_button, row=0, col=2)
+        self.layout.addWidget(self.end_rrds_button, row=0, col=3)
         
         self.layout.addWidget(self.ch1_set_active, row=1, col=0, colspan=2)
         self.layout.addWidget(self._ch1_num_stacks_label,row=2, col=0)

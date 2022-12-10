@@ -4,7 +4,7 @@ char state_chars[num_chars];
 char _state_chars[num_chars];
 bool new_state = false;
 int state_index = 0;
-int val_arr[80]; 
+int val_arr[1024]; // 204 points can be initialized 
 
 
 int val_arr[80]; 
@@ -67,11 +67,6 @@ int next_point_time;
 int current_point_timestamp;
 
 #define BKSERIAL Serial6 // update to current pin settings
-
-
-//const byte cam_trig_pin = 41; // update pin value - may not be used
-//int cam_pin_val;
-
 
 void setup() {
   // put your setup code here, to run once:
@@ -244,8 +239,9 @@ void execute_state(int cmd, int cmd_len) {
       next_point_time = val_arr[4];
       current_point_timestamp = millis();
       break;
-    
 
+    case 11: // kill list of points
+      multiple_points=false:
   }
   
 
@@ -341,7 +337,6 @@ void check_pins() {
 
 
   // deal with multiple points
-
   if (multiple_points) {
     if (current_point < n_points){
       if ((current_point_timestamp - curr_timestamp)>next_point_time) {
@@ -456,15 +451,3 @@ void ft_state_machine() {
 // col 23 sequence counter - usually frame counter but can reset is tracking resets
 // col 24 delta timestep since last frame
 // col 25 alt timestamp - frame capture time (ms since midnight)
-
-
-// void bk_state() {
-//   int _cmd = 0;
-//   int _val = 0;
-//   if (SerialUSB1.available() > 0) {
-//     _cmd = SerialUSB1.parseInt();
-//     _val = SerialUSB1.parseInt();
-//   }
-//   bk_state_machine(_cmd, _val);
-    
-// }
