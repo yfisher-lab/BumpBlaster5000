@@ -1,30 +1,19 @@
-import itertools
-import queue
-import threading
-import sys
-import time
-import warnings
-
+import itertools, queue, threading, sys, time, warnings
+import win32com.client
 
 import numpy as np
-from PyQt5 import QtCore, QtWidgets, QtGui
-from PyQt5.QtWidgets import QApplication
-import pyqtgraph as pg
 import serial
+import pyqtgraph as pg
+from pyqtgraph import Qt, QtCore, QtGui
+from pygtgraph.Qt import QtWidgets 
 
+from ..utils import pol2cart, cart2pol, threaded, launch_multiprocess
+from .. import params
+from . import pg_gui, read_raw_data
 
-import plugin_viewer
-import BumpBlaster5000
-from BumpBlaster5000.utils import pol2cart, cart2pol, threaded
-from BumpBlaster5000 import params
-
-
-if params.hostname == 'SMAUG':
-    import win32com.client
-    
-class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
-    def __init__(self, parent=None):
-        super(PLUI, self).__init__(parent)
+class BumpBlaster(pg_gui.MainWindow):
+    def __init__(self):
+        super(BumpBlaster, self).__init__()
         self.setupUi(self)
         self._params = params.PL_PC_PARAMS
 
@@ -36,19 +25,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self._zstack_frames = 1
         self.numSlicesInput.setText('1')
 
-        # connect to prairie link
-        self.pl = None
-        self._pl_active = threading.Event()
-        self.open_prairie_link()
-        # self._get_frame_period(reset_timer=False)
-        # self._zstack_period = self._frame_period * self._zstack_frames
-        self._dummy_img = None
-
-        # wait for prairie link to connect
-        print("Waiting for PriaireLink to connect")
-        while not self._pl_active.is_set():
-            time.sleep(.01)
-        print("PrairieLink connected")
+        
         # connect to teensy serial port to read PL commands
         self.teensy_srl_handle = self.continuous_read_teensy_pl_commands()
         
@@ -60,10 +37,7 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         self.ch2ViewButton.stateChanged.connect(self.set_ch2_active)
         self.ch2_active = False
         # channel viewer data placeholders
-        self._zbuffers = {1: None,
-                          2: None}
-        self._zproj = {1: None,
-                       2: None}
+       
 
         # make channel views into pyqtgraph images
         self.ch1_plot = self.ch1Viewer.getPlotItem()
@@ -164,43 +138,43 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
             while True: # ToDo: make this a flag for reading vr data
                 srl.readline() # put this in a queue
 
-    def open_prairie_link(self):
-        '''
-        opens prairie link and sets a dummy image to match current frame size
-        :return:
-        '''
+    # def open_prairie_link(self):
+    #     '''
+    #     opens prairie link and sets a dummy image to match current frame size
+    #     :return:
+    #     '''
 
-        # make connection
-        self.pl = win32com.client.Dispatch("PrairieLink64.Application")
-        self.pl.Connect('127.0.0.1')
+    #     # make connection
+    #     self.pl = win32com.client.Dispatch("PrairieLink64.Application")
+    #     self.pl.Connect('127.0.0.1')
 
-        # set thread safe event
-        self._pl_active.set()
+    #     # set thread safe event
+    #     self._pl_active.set()
 
-        # set dummy image
-        self._set_dummy_img()
+    #     # set dummy image
+    #     self._set_dummy_img()
 
-    def _set_dummy_img(self):
-        '''
-        make a dummy image of ones to help with mask creation and array allocation
-        :return:
-        '''
-        if self._pl_active.is_set():  # if connected to prairie link
-            self._dummy_img = np.ones((self.pl.LinesPerFrame(), self.pl.PixelsPerLine()))
+    # def _set_dummy_img(self):
+    #     '''
+    #     make a dummy image of ones to help with mask creation and array allocation
+    #     :return:
+    #     '''
+    #     if self._pl_active.is_set():  # if connected to prairie link
+    #         self._dummy_img = np.ones((self.pl.LinesPerFrame(), self.pl.PixelsPerLine()))
 
-    def _get_frame_period(self, reset_timer=True):
-        '''
-        Read frame period from prairie link and convert from string.
+    # def _get_frame_period(self, reset_timer=True):
+    #     '''
+    #     Read frame period from prairie link and convert from string.
 
-        :param reset_timer: If true, reset QTimer to new frame period. This is usually the desired behavior but flag
-        exists to avoid errors during initialization
-        :return:
-        '''
-        # TODO: check this output, change to ms if necessary and round to int
-        self._frame_period = float(self.pl.GetState("framePeriod"))
-        if reset_timer:
-            self.frame_timer.stop()
-            self.frame_timer.start() #self._frame_period)
+    #     :param reset_timer: If true, reset QTimer to new frame period. This is usually the desired behavior but flag
+    #     exists to avoid errors during initialization
+    #     :return:
+    #     '''
+    #     # TODO: check this output, change to ms if necessary and round to int
+    #     self._frame_period = float(self.pl.GetState("framePeriod"))
+    #     if reset_timer:
+    #         self.frame_timer.stop()
+    #         self.frame_timer.start() #self._frame_period)
 
     def set_ch1_active(self):
         '''
@@ -210,11 +184,11 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         '''
         if self.ch1ViewButton.isChecked():
             self.ch1_active = True
-            self._reinit_zbuffer(1)
+            # self._reinit_zbuffer(1)
 
         else:
             self.ch1_active = False
-            self._zbuffers[1] = None
+            # self._zbuffers[1] = None
 
     def set_ch2_active(self):
         '''
@@ -224,21 +198,21 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         '''
         if self.ch2ViewButton.isChecked():
             self.ch2_active = True
-            self._reinit_zbuffer(2)
+            # self._reinit_zbuffer(2)
         else:
             self.ch2_active = False
-            self._zbuffers[2] = None
+            # self._zbuffers[2] = None
 
-    def _reinit_zbuffer(self,ch):
-        '''
-        Initialize z buffers for plotting
-        :param ch: channel to initialize
-        :return:
-        '''
-        self._set_dummy_img()
-        self._get_frame_period()
-        self._zstack_period = self._frame_period * self._zstack_frames
-        self._zbuffers[ch]=np.zeros((*self._dummy_img.shape, self._zstack_frames))
+    # def _reinit_zbuffer(self,ch):
+    #     '''
+    #     Initialize z buffers for plotting
+    #     :param ch: channel to initialize
+    #     :return:
+    #     '''
+    #     self._set_dummy_img()
+    #     self._get_frame_period()
+    #     self._zstack_period = self._frame_period * self._zstack_frames
+    #     self._zbuffers[ch]=np.zeros((*self._dummy_img.shape, self._zstack_frames))
 
     def set_num_slices(self):
         '''
@@ -250,29 +224,29 @@ class PLUI(QtWidgets.QMainWindow, plugin_viewer.Ui_MainWindow):
         num_slices_txt = self.numSlicesInput.text()
         try:
             self.num_slices = int(num_slices_txt)
-            # deal with edge cases
-            if self.num_slices == 1:
-                self._zstack_frames = 1
-            elif self.num_slices > 1:
-                self._zstack_frames = self.num_slices + 1
-            else:  # e.g. negative number or 0 accidentally input
-                self.num_slices = 1
-                self._zstack_frames = 1
-                self.numSlicesInput.setText('1')
+            # # deal with edge cases
+            # if self.num_slices == 1:
+            #     self._zstack_frames = 1
+            # elif self.num_slices > 1:
+            #     self._zstack_frames = self.num_slices + 1
+            # else:  # e.g. negative number or 0 accidentally input
+            #     self.num_slices = 1
+            #     self._zstack_frames = 1
+            #     self.numSlicesInput.setText('1')
         except ValueError:  # accidentally entered something that's not a number
             self.numSlicesInput.setText('1')  # default to a single slince
             self.num_slices = 1
             self._zstack_frames = 1
 
-        # update the timing information
-        if self.ch1_active:
-            self._reinit_zbuffer(1)
+        # # update the timing information
+        # if self.ch1_active:
+        #     self._reinit_zbuffer(1)
 
-        if self.ch2_active:
-            self._reinit_zbuffer(2)
+        # if self.ch2_active:
+        #     self._reinit_zbuffer(2)
 
-        self._get_frame_period()
-        self._zstack_period = self._frame_period * self._zstack_frames
+        # self._get_frame_period()
+        # self._zstack_period = self._frame_period * self._zstack_frames
 
 
     def frame_update(self):
