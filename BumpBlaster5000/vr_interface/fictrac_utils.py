@@ -97,7 +97,10 @@ class FicTracSocketManager:
         
         self.columns_to_read = columns_to_read
         #ToDo: downsample this and make it into a shared memory object for faster plotting
-        self.plot_deques = {k: shared_memory.CircularFlatBuffer(int(FICTRAC_FRAME_RATE*plot_buffer_time), name = k).create() for k in columns_to_read.keys()}
+        self._frame_counter = 0
+        self._ds = 10
+        self.plot_deques = {k: shared_memory.CircularFlatBuffer(int(FICTRAC_FRAME_RATE*plot_buffer_time/self._ds), name = k).create() for k in columns_to_read.keys()}
+
         
         
 
@@ -269,9 +272,11 @@ class FicTracSocketManager:
 
         # extract fictrac variables
         # (see https://github.com/rjdmoore/fictrac/blob/master/doc/data_header.txt for descriptions)
-        
-        for k,v in self.columns_to_read.items():
-            self.plot_deques[k].append(float(toks[v]))
+        self._frame_counter = (self._frame_counter+1) % self._ds
+        if self._frame_counter == 0:
+            with self._ft_buffer_lock():
+                for k,v in self.columns_to_read.items():
+                    self.plot_deques[k].append(float(toks[v]))
 
         #TODO: write to serial queue
         self.ft_serial_queue.put(toks[self.columns_to_read['heading']])
