@@ -12,7 +12,8 @@ from collections import deque
 
 import pandas as pd
 
-from BumpBlaster5000.utils import threaded
+from ..utils import threaded
+from .. import shared_memory
 
 
 
@@ -95,10 +96,10 @@ class FicTracSocketManager:
         self.ft_serial_queue = queue.SimpleQueue()
         
         self.columns_to_read = columns_to_read
-        self.plot_deques = {k: deque(maxlen=int(FICTRAC_FRAME_RATE*plot_buffer_time)) for k in self.columns_to_read.keys()}
-        for k, v in self.plot_deques.items():
-            v.append(0)
-        self._plot_deque_lock = threading.Lock()
+        #ToDo: downsample this and make it into a shared memory object for faster plotting
+        self.plot_deques = {k: shared_memory.CircularFlatBuffer(int(FICTRAC_FRAME_RATE*plot_buffer_time), name = k).create() for k in columns_to_read.keys()}
+        
+        
 
         
 
@@ -264,9 +265,9 @@ class FicTracSocketManager:
 
         # extract fictrac variables
         # (see https://github.com/rjdmoore/fictrac/blob/master/doc/data_header.txt for descriptions)
-        with self._plot_deque_lock:
-            for k,v in self.columns_to_read.items():
-                self.plot_deques[k].append(float(toks[v]))
+        
+        for k,v in self.columns_to_read.items():
+            self.plot_deques[k].append(float(toks[v]))
 
         #TODO: write to serial queue
         self.ft_serial_queue.put(toks[self.columns_to_read['heading']])
@@ -278,7 +279,7 @@ class FicTracSocketManager:
 
         with self._plot_deque_lock:
             for k,v in self.columns_to_read.items():
-                self.plot_deques[k].clear()
-                self.plot_deques[k].append(0)
+                self.plot_deques[k].reset()
+                
 
 
