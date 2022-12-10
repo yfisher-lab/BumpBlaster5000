@@ -1,13 +1,9 @@
 from warnings import warn
+
 import multiprocessing as mp
-import numpy as np
-
 import multiprocessing.shared_memory
-
+import numpy as np
 from numba import njit
-
-
-
 
 class SharedPeriodicCounter:
 
@@ -151,6 +147,7 @@ class SharedArray:
 class CircularFlatBuffer:
     
     def __init__(self,length, dtype = np.float, name = 'deque'):
+      
         self._creator = None
         
         self.length = length
@@ -208,7 +205,7 @@ class CircularFlatBuffer:
         self.first_filled_index[0] = int(np.maximum(self.first_filled_index[0]-1,0))
         
     def reset(self):
-        self.first_filled_index[0] = int(self.length-1)
+        self.first_filled_index[0] = int(self.length)
     
     @property
     def vals(self):
