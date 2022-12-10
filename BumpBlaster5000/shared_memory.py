@@ -1,5 +1,7 @@
 from warnings import warn
-from . import mp, np
+import multiprocessing as mp
+import numpy as np
+
 import multiprocessing.shared_memory
 
 from numba import njit
@@ -152,6 +154,7 @@ class CircularFlatBuffer:
         self._creator = None
         
         self.length = length
+        self.shape = (length,)
         
         self.name = name
         self.dtype = dtype
