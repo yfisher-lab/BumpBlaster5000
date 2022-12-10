@@ -175,7 +175,8 @@ class CircularFlatBuffer:
         self._first_filled_inst = SharedArray((1,),
                                             name=self.name+'_first_filled_inst',
                                             dtype=int).create()
-        self.first_filled_index = self._frame_filled_inst.buff
+        self.first_filled_index = self._first_filled_inst.buff
+        self.first_filled_index[0] = self.length
 
         self._creator = True
         return self
@@ -204,14 +205,14 @@ class CircularFlatBuffer:
     def append(self,val):
         self.buff[:-1] = self.buff[1:]
         self.buff[-1] = val
-        self.first_filled_index = np.minimum(self.first_filled_index-1,0)
+        self.first_filled_index[0] = int(np.maximum(self.first_filled_index[0]-1,0))
         
     def reset(self):
-        self.first_filled_index = self.length-1
+        self.first_filled_index[0] = int(self.length-1)
     
     @property
     def vals(self):
-        return self.buff[self.first_filled_index:]
+        return self.buff[self.first_filled_index[0]:]
     
     
         
