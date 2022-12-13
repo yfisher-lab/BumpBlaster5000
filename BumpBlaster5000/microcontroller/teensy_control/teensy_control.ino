@@ -1,4 +1,6 @@
 // State reading variables
+#include <cstring>
+
 const int num_chars = 256;
 char state_chars[num_chars];
 char _state_chars[num_chars];
@@ -45,7 +47,7 @@ int bk_opto_trig_timestamp;
 const int bk_trig_timeout = 10;
 
 bool opto_countdown_bool = false;
-int opto_countdown_dur = 100;
+int opto_countdown_delay = 100;
 int opto_countdown_timestamp;
 
 bool dac_countdown_bool = false;
@@ -226,6 +228,8 @@ void execute_state(int cmd, int cmd_len) {
      // each point: heading, index, opto_bool, opto_delay, combined_dur
       multiple_points = true;
       n_points = cmd_len/5;
+//      SerialUSB2.print('\t');
+      
       current_point = 0;
       
       run_point(val_arr[0], val_arr[1], val_arr[2], val_arr[3]);
@@ -235,7 +239,8 @@ void execute_state(int cmd, int cmd_len) {
       break;
 
     case 11: // kill list of points
-      multiple_points=false:
+      multiple_points=false;
+      break;
   }
   
 
@@ -245,7 +250,7 @@ void execute_state(int cmd, int cmd_len) {
 
 // heading, index, opto_bool, opto_delay
 void run_point(int _heading, int _index, int _opto_bool, int _opto_delay) {
-  if _opto_delay>=0 {
+  if (_opto_delay>=0) {
         heading_dac.setVoltage(_heading, false);
         index_dac.setVoltage(_index,false);
 
@@ -287,6 +292,8 @@ void trig_opto() {
 
 void check_pins() {
   static int va_index=0;
+//  char curr_str[15] = "current_point";
+//  char val_arr_str[15] = "val_arr";
   // flip start down
   int curr_timestamp = millis();
   if (bk_scan_trig_state & ((curr_timestamp - bk_scan_trig_timestamp) > bk_trig_timeout)) {
@@ -319,6 +326,7 @@ void check_pins() {
   // set dac values after specified delay
   if (dac_countdown_bool) {
     if ((curr_timestamp-dac_countdown_timestamp) > dac_countdown_delay) {
+      
       heading_dac.setVoltage(dac_countdown_heading, false);
       index_dac.setVoltage(dac_countdown_index, false);
       dac_countdown_bool = false;
@@ -328,11 +336,16 @@ void check_pins() {
 
   // deal with multiple points
   if (multiple_points) {
-    if (current_point < n_points){
-      if ((current_point_timestamp - curr_timestamp)>next_point_time) {
+    if (current_point < n_points-1){
+      if ((curr_timestamp-current_point_timestamp)>next_point_time) {
+        
+        
         va_index = (current_point + 1) * 5;
+
+        
         run_point(val_arr[va_index], val_arr[va_index+1], val_arr[va_index+2], val_arr[va_index+3]);
         next_point_time = val_arr[va_index+4];
+        current_point_timestamp = millis();
         current_point++;
       }
     } else {

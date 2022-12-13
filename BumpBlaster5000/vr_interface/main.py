@@ -36,7 +36,10 @@ class BumpBlaster(pg_gui.WidgetWindow):
         self.pl_serial = None
         
         self.exp_combobox.currentTextChanged.connect(self.set_exp)
-        self.exp_func = None
+        current_exp = None
+        # exec(f"from ..experiment_protocols import {self.exp_combobox.currentText()} as current_exp")
+        exec(f"self.exp_func = experiment_protocols.{self.exp_combobox.currentText()}.run")
+        # self.exp_func = None
         self.exp_process = None
         self.run_exp_button.clicked.connect(self.run_exp)
         self.abort_exp_button.clicked.connect(self.abort_exp)
@@ -48,6 +51,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
         except serial.SerialException:
             raise Exception("teensy input serial port %s couldn't be open" % self._params['teensy_input_com'])
         self.teensy_input_queue = mp.SimpleQueue()
+        self.teensy_input_queue.put('1,7,0\n'.encode('UTF-8'))
         
 
         # start thread to read outputs from teensy
@@ -56,6 +60,8 @@ class BumpBlaster(pg_gui.WidgetWindow):
         self.teensy_read_handle = self.continuous_read_teensy_com()
         while not self._isreading_teensy.is_set():
             time.sleep(.01)
+
+        self.teensy_write_handle = self.write_to_teensy_input_com()
 
         #
         self.plot_deques = {'integrated x': None,
@@ -134,15 +140,20 @@ class BumpBlaster(pg_gui.WidgetWindow):
         
     def set_exp(self):
 
-        exec(f"from experiment_protocols import {self.exp_combobox.currentText} as current_exp")
-        self.exp_fun = current_exp.run
+        exec(f"self.exp_func = experiment_protocols.{self.exp_combobox.currentText()}.run")
         
 
     def run_exp(self):
-        self.exp_process = launch_multiprocess(self.exp_fun, self.teensy_input_queue)
+        if self.exp_process is not None:
+            self.exp_process.join()
+       
+        self.exp_process = launch_multiprocess(self.exp_func, self.teensy_input_queue)
+        print("stuff")
+        # 
 
     def abort_exp(self):
         self.teensy_input_queue.put(b'0,11\n')
+   
         self.exp_process.kill()
         
     def toggle_fictrac(self):
@@ -183,9 +194,10 @@ class BumpBlaster(pg_gui.WidgetWindow):
 
     @threaded
     def write_to_teensy_input_com(self):
-        while self._isreading_teensy.set():
+        while self._isreading_teensy.is_set():
             if not self.teensy_input_queue.empty():
-                self.teensy_input_serial.write(self.teensy_input_queue.get())
+                tmp = self.teensy_input_queue.get()
+                self.teensy_input_serial.write(tmp) #self.teensy_input_queue.get())
     
 
         
@@ -223,13 +235,13 @@ class BumpBlaster(pg_gui.WidgetWindow):
             
             
     def plot_cumm_path(self):
-        with self.ft_manager._ft_buffer_lock():
+        with self.ft_manager._ft_buffer_lock:
             self.cumm_path_plotitem.plot(self.plot_deques['integrated x'].vals, self.plot_deques['integrated y'].vals,
                                          clear=True, _callSync='off')
         
     def plot_heading_hist(self):
 
-        with self.ft_manager._ft_buffer_lock():
+        with self.ft_manager._ft_buffer_lock:
             headings = self.plot_deques['heading'].vals
             hist, edges = numba_histogram(headings, 20)
 

@@ -274,7 +274,7 @@ class FicTracSocketManager:
         # (see https://github.com/rjdmoore/fictrac/blob/master/doc/data_header.txt for descriptions)
         self._frame_counter = (self._frame_counter+1) % self._ds
         if self._frame_counter == 0:
-            with self._ft_buffer_lock():
+            with self._ft_buffer_lock:
                 for k,v in self.columns_to_read.items():
                     self.plot_deques[k].append(float(toks[v]))
 
