@@ -11,11 +11,8 @@ def build_cmd_str(queue):
     n_spots = 8
 
 
-    rng = np.random.default_rng()
-    headings = np.arange(0, max_dac_val, max_dac_val/n_spots, dtype=int)
-    print(headings.shape)
-    headings = np.roll(headings,rng.integers(0,n_spots))
 
+    headings = np.arange(max_dac_val,0, -max_dac_val/n_spots, dtype=int)
 
     cmd_len = 5*(n_spots+2)
     cmd = [cmd_len, 10]
