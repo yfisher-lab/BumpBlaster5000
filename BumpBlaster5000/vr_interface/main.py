@@ -35,26 +35,25 @@ class BumpBlaster(pg_gui.WidgetWindow):
 
         self.pl_serial = None
         
+        ## Load default opto experiment
         self.exp_combobox.currentTextChanged.connect(self.set_exp)
-        current_exp = None
-        # exec(f"from ..experiment_protocols import {self.exp_combobox.currentText()} as current_exp")
         exec(f"self.exp_func = experiment_protocols.{self.exp_combobox.currentText()}.run")
-        # self.exp_func = None
         self.exp_process = None
         self.run_exp_button.clicked.connect(self.run_exp)
         self.abort_exp_button.clicked.connect(self.abort_exp)
 
 
-        # start serial port to send commands to teensy
+        ## start serial port to send commands to teensy
         try:
             self.teensy_input_serial = serial.Serial(self._params['teensy_input_com'], baudrate=self._params['baudrate'])
         except serial.SerialException:
             raise Exception("teensy input serial port %s couldn't be open" % self._params['teensy_input_com'])
         self.teensy_input_queue = mp.SimpleQueue()
+        # make sure fictrac starts in closed loop
         self.teensy_input_queue.put('1,7,0\n'.encode('UTF-8'))
         
 
-        # start thread to read outputs from teensy
+        ## start thread to read outputs from teensy
         self._isreading_teensy = threading.Event()
         self.teensy_read_queue = queue.SimpleQueue()
         self.teensy_read_handle = self.continuous_read_teensy_com()
@@ -68,11 +67,11 @@ class BumpBlaster(pg_gui.WidgetWindow):
                             'integrated y': None,
                             'heading': None}
         self.reset_plots_button.clicked.connect(self.ft_manager.reset_plot_dequeus)
-        #
+        
         
         self.plot_update_timer = QtCore.QTimer()
         self.plot_update_timer.timeout.connect(self.update_plots)
-        self.plot_update_timer.start(30)
+        self.plot_update_timer.start(plot_T)
         
         # run once for compiling
         _, _ = numba_histogram(np.linspace(0,10), 5)
