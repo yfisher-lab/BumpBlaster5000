@@ -110,7 +110,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
             filename = os.path.join(f"{basename}_scan{scan_number}.pkl")
             while os.path.exists(filename):
                 scan_number+=1
-                filename = os.path.join(self.ft_output_path,f"ft_frames_scan{scan_number}.pkl")
+                filename = os.path.join(f"{basename}_scan{scan_number}.pkl")
             
             with open(filename,'wb') as file:
                 pickle.dump(self.ft_frames,file)
