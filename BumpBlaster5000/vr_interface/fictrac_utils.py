@@ -290,5 +290,4 @@ class FicTracSocketManager:
             for k,v in self.columns_to_read.items():
                 self.plot_deques[k].reset()
                 
-
-
+        return

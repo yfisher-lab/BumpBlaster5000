@@ -24,6 +24,8 @@ class WidgetWindow:
         self.abort_exp_button = QtWidgets.QPushButton("Abort Experiment")
 
         self.reset_plots_button = QtWidgets.QPushButton("Reset Plots")
+        
+        
 
         # checkboxes
         self._exp_label = QtWidgets.QLabel()
@@ -34,6 +36,16 @@ class WidgetWindow:
         self.launch_fictrac_checkbox = QtWidgets.QCheckBox("Launch Fictrac")
         self.send_orientation_checkbox = QtWidgets.QCheckBox("Send Orientation Data")
         
+        # text input
+        self._heading_pin_label = QtWidgets.QLabel()
+        self._heading_pin_label.setText("Set heading pin value:")
+        self.heading_pin_input = QtWidgets.QLineEdit()
+        self.heading_pin_send_button = QtWidgets.QPushButton("Send heading value [0-4096)")
+
+        self._index_pin_label = QtWidgets.QLabel()
+        self._index_pin_label.setText("Set index/y pin value:")
+        self.index_pin_input = QtWidgets.QLineEdit()
+        self.index_pin_send_button = QtWidgets.QPushButton("Send index/y value [0-4096)")
 
         
         # plot views
@@ -55,18 +67,7 @@ class WidgetWindow:
         self.heading_hist_plotitem.setXRange(-1*np.pi/16,2*np.pi + np.pi/16)
         self.heading_hist_view.setCentralItem(self.heading_hist_plotitem)
 
-        # self.current_heading_view = pg.widgets.RemoteGraphicsView.RemoteGraphicsView()
-        # self.current_heading_view.pg.setConfigOptions(antialias = True)
-        # self.current_heading_view.setWindowTitle("Current Heading")
-        # self.app.aboutToQuit.connect(self.current_heading_view.close)
-        # self.current_heading_plotitem = self.current_heading_view.pg.PlotItem(title="Current Heading")
-        # self.current_heading_plotitem._setProxyOptions(deferGetattr=True)
-        # self.current_heading_plotitem.setAspectLocked(lock=True, ratio=1)
-        # self.current_heading_plotitem.showAxis('left', False)
-        # self.current_heading_plotitem.showAxis('bottom', False)
-        # self.current_heading_plotitem.setXRange(-1,1)
-        # self.current_heading_plotitem.setYRange(-1,1)
-        # self.current_heading_view.setCentralItem(self.current_heading_plotitem)
+        
         self.set_layout()
         self.layout.resize(1200,500)
         self.layout.show()
@@ -83,12 +84,24 @@ class WidgetWindow:
         self.layout.addWidget(self.run_exp_button, row=1, col=4)
         self.layout.addWidget(self.abort_exp_button, row=1, col=5)
 
-        self.layout.addWidget(self.reset_plots_button, row=2, col=0)
-
+        
         self.layout.addWidget(self.launch_fictrac_checkbox, row=1, col=0)
         self.layout.addWidget(self.send_orientation_checkbox, row=1, col=1)
-        self.layout.addWidget(self.cumm_path_view,row=3,col=0,colspan=3,rowspan=3)
-        self.layout.addWidget(self.heading_hist_view,row=3,col=3,colspan=3,rowspan=3)
+        
+        self.layout.addWidget(self.reset_plots_button, row=2, col=0)
+
+        self.layout.addWidget(self._heading_pin_label, row=3, col=0)
+        self.layout.addWidget(self.heading_pin_input, row=3, col=1)
+        self.layout.addWidget(self.heading_pin_send_button, row=3, col=2)
+        
+        self.layout.addWidget(self._index_pin_label, row=3, col=3)
+        self.layout.addWidget(self.index_pin_input, row=3, col=4)
+        self.layout.addWidget(self.index_pin_send_button, row=3, col=5)
+        
+        self.layout.addWidget(self.cumm_path_view,row=4,col=0,colspan=3,rowspan=3)
+        self.layout.addWidget(self.heading_hist_view,row=4,col=3,colspan=3,rowspan=3)
+        
+        
 
         for col in range(6):
             self.layout.layout.setColumnStretch(col,1)
