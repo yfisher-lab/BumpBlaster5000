@@ -9,8 +9,10 @@ import serial
 
 from .. import params, shared_memory, experiment_protocols
 from ..utils import threaded, numba_histogram, launch_multiprocess
-from . import fictrac_utils as ft_utils
 from . import pg_gui
+
+if params.hostname != 'bard-smaug-slayer':
+    from . import fictrac_utils as ft_utils
 
 class BumpBlaster(pg_gui.WidgetWindow):
 
@@ -62,19 +64,22 @@ class BumpBlaster(pg_gui.WidgetWindow):
 
         self.teensy_write_handle = self.write_to_teensy_input_com()
 
-        #
+        # plots
+        self.reset_plots_button.clicked.connect(self.ft_manager.reset_plot_dequeus)
         self.plot_deques = {'integrated x': None,
                             'integrated y': None,
                             'heading': None}
-        self.reset_plots_button.clicked.connect(self.ft_manager.reset_plot_dequeus)
-        
-        
         self.plot_update_timer = QtCore.QTimer()
         self.plot_update_timer.timeout.connect(self.update_plots)
-        self.plot_update_timer.start(plot_T)
+        self.plot_update_timer.start(plot_timeout)
         
         # run once for compiling
         _, _ = numba_histogram(np.linspace(0,10), 5)
+        
+        
+        # manually set heading or index pin
+        self.heading_pin_send.clicked.connect(self.send_heading_val)
+        self.index_pin_send.clicked.connect(self.send_index_val)
 
     def start_scan(self):
         '''
@@ -114,6 +119,8 @@ class BumpBlaster(pg_gui.WidgetWindow):
             
             with open(filename,'wb') as file:
                 pickle.dump(self.ft_frames,file)
+                
+            self.ft_frames = {'start': [], 'opto': [], 'abort': []}
             
 
         
@@ -154,6 +161,14 @@ class BumpBlaster(pg_gui.WidgetWindow):
         self.teensy_input_queue.put(b'0,11\n')
    
         self.exp_process.kill()
+        
+    def send_heading_val(self):
+        new_heading = int(self.heading_pin_input.text())
+        self.teensy_input_queue.put(f"1,6,{new_heading}\n".encode('UTF-8'))
+        
+    def send_index_val(self):
+        new_index = int(self.index_pin_input.text())
+        self.teensy_input_queue.put(f"1,7,{new_index}\n".encode('UTF-8'))
         
     def toggle_fictrac(self):
         '''
@@ -265,13 +280,17 @@ class BumpBlaster(pg_gui.WidgetWindow):
         self.stop_scan()
         self._isreading_teensy.clear()
 
-        # join serial threads
+        # join serial processing threads
         self.teensy_read_handle.join()
         self.teensy_input_serial.close()
         
-
+        # close remote plotting processes
         self.cumm_path_plotwidget.close()
         self.heading_hist_plotwidget.close()
+        
+        # disconnect shared memory
+        for k, v in self.plot_deques.items():
+            v.close()
         
         self.disconnect()
         event.accept()

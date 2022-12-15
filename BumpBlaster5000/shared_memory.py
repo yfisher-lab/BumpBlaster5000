@@ -205,7 +205,7 @@ class CircularFlatBuffer:
         self.first_filled_index[0] = int(np.maximum(self.first_filled_index[0]-1,0))
         
     def reset(self):
-        self.first_filled_index[0] = int(self.length)
+        self.first_filled_index[0] = int(self.length)-1
     
     @property
     def vals(self):

@@ -4,5 +4,8 @@
 from .. import params, utils
 from ..utils import threaded
 
-from . import fictrac_utils, pg_gui, main
+from . import pg_gui, main
+
+if params.hostname != 'bard-smaug-slayer':
+    from . import fictrac_utils
 
