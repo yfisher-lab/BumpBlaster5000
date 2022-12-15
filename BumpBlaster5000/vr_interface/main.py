@@ -74,7 +74,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
         self.plot_update_timer.start(plot_timeout)
         
         # run once for compiling
-        _, _ = numba_histogram(np.linspace(0,10), 5)
+        _ = numba_histogram(np.linspace(0,10), 5)
         
         
         # manually set heading or index pin
@@ -154,8 +154,6 @@ class BumpBlaster(pg_gui.WidgetWindow):
             self.exp_process.join()
        
         self.exp_process = launch_multiprocess(self.exp_func, self.teensy_input_queue)
-        print("stuff")
-        # 
 
     def abort_exp(self):
         self.teensy_input_queue.put(b'0,11\n')
@@ -181,16 +179,14 @@ class BumpBlaster(pg_gui.WidgetWindow):
             # output path
             self.ft_output_path = QFileDialog.getSaveFileName(self.layout,
                                                                "FicTrac Output File")[0]
-            #other args
-            print(self.ft_output_path)
-            #TODO: make this an actual filename rather than a directory and extract directory
+            
+            
             self.ft_manager.open(output_path=self.ft_output_path)
             self.ft_manager.start_reading()
-            self._pl_serial_thread = self.write_to_pl_com()
+            self._pl_serial_thread = self.write_to_pl_com() # write to prairie link
+            # initialize queues
             for k in self.plot_deques.keys():
-                #ToDo: remove hard coding of buffer size
-                self.plot_deques[k] = shared_memory.CircularFlatBuffer(int(45*600), name = k).connect()
-            
+                self.plot_deques[k] = shared_memory.CircularFlatBuffer(params.FT_PC_PARAMS['plot_buffer_length'], name = k).connect()
             
         else:
             self.ft_manager.stop_reading()
@@ -257,9 +253,9 @@ class BumpBlaster(pg_gui.WidgetWindow):
 
         with self.ft_manager._ft_buffer_lock:
             headings = self.plot_deques['heading'].vals
-            hist, edges = numba_histogram(headings, 20)
+            hist, edges, centers = numba_histogram(headings, 20)
 
-        self.heading_hist_plotitem.plot(edges[1:], hist, brush=(0,0,255,150),
+        self.heading_hist_plotitem.plot(centers, hist, brush=(0,0,255,150),
                                         fillLevel=0, clear=True, _callSync='off')
         self.heading_hist_plotitem.plot([headings[-1], headings[-1]], [0,.2], pen=(255,0,0), _callSync='off')
 

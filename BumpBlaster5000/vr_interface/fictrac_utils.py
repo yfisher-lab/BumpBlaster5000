@@ -13,16 +13,13 @@ from collections import deque
 import pandas as pd
 
 from ..utils import threaded
-from .. import shared_memory
+from .. import shared_memory, params
 
 
 
 
 FICTRAC_PATH = r'C:\Users\fisherlab\Documents\FicTrac211\fictrac.exe'
 CONFIG_PATH = r'C:\Users\fisherlab\Documents\FicTrac211\config.txt'
-
-FICTRAC_FRAME_RATE = 450 # Hz approximate
-
 
 class FicTracSubProcess:
     '''
@@ -99,7 +96,7 @@ class FicTracSocketManager:
         #ToDo: downsample this and make it into a shared memory object for faster plotting
         self._frame_counter = 0
         self._ds = 10
-        self.plot_deques = {k: shared_memory.CircularFlatBuffer(int(FICTRAC_FRAME_RATE*plot_buffer_time/self._ds), name = k).create() for k in columns_to_read.keys()}
+        self.plot_deques = {k: shared_memory.CircularFlatBuffer(params.FT_PC_PARAMS['plot_buffer_length'], name = k).create() for k in columns_to_read.keys()}
 
         
         

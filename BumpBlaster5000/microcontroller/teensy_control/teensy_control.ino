@@ -368,7 +368,7 @@ void ft_state() {
   
 }
 
-void recv_ft_data() { // receive Fictrack data
+void recv_ft_data() { // receive Fictrac data
     
     static byte ndx = 0; // buffer index
     static char delimiter = ','; // column delimiter
