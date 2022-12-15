@@ -1,15 +1,18 @@
 import itertools, queue, threading, sys, time, warnings
-import win32com.client
+
 
 import numpy as np
 import serial
 import pyqtgraph as pg
 from pyqtgraph import Qt, QtCore, QtGui
-from pygtgraph.Qt import QtWidgets 
+from pyqtgraph.Qt import QtWidgets 
 
 from ..utils import pol2cart, cart2pol, threaded, launch_multiprocess
 from .. import params
 from . import pg_gui, read_raw_data
+
+if params.hostname != 'bard-smaug-slayer':
+    import win32com.client
 
 class BumpBlaster(pg_gui.MainWindow):
     def __init__(self):
@@ -110,6 +113,7 @@ class BumpBlaster(pg_gui.MainWindow):
         self.frame_timer.start() #self._frame_period)
 
     @threaded
+    #ToDo: this should probably be scrapped
     def continuous_read_teensy_pl_commands(self):
         '''
         open serial port from teensy and send commands straight to prairie link,
@@ -136,7 +140,7 @@ class BumpBlaster(pg_gui.MainWindow):
 
         with serial.Serial(self._params['vr_com'], baudrate=self._params['baudrate']) as srl:
             while True: # ToDo: make this a flag for reading vr data
-                srl.readline() # put this in a queue
+                srl.readline() # put this in a queue or buffer to do something with
 
     # def open_prairie_link(self):
     #     '''
@@ -184,11 +188,9 @@ class BumpBlaster(pg_gui.MainWindow):
         '''
         if self.ch1ViewButton.isChecked():
             self.ch1_active = True
-            # self._reinit_zbuffer(1)
 
         else:
             self.ch1_active = False
-            # self._zbuffers[1] = None
 
     def set_ch2_active(self):
         '''
@@ -198,21 +200,8 @@ class BumpBlaster(pg_gui.MainWindow):
         '''
         if self.ch2ViewButton.isChecked():
             self.ch2_active = True
-            # self._reinit_zbuffer(2)
         else:
             self.ch2_active = False
-            # self._zbuffers[2] = None
-
-    # def _reinit_zbuffer(self,ch):
-    #     '''
-    #     Initialize z buffers for plotting
-    #     :param ch: channel to initialize
-    #     :return:
-    #     '''
-    #     self._set_dummy_img()
-    #     self._get_frame_period()
-    #     self._zstack_period = self._frame_period * self._zstack_frames
-    #     self._zbuffers[ch]=np.zeros((*self._dummy_img.shape, self._zstack_frames))
 
     def set_num_slices(self):
         '''
@@ -224,30 +213,13 @@ class BumpBlaster(pg_gui.MainWindow):
         num_slices_txt = self.numSlicesInput.text()
         try:
             self.num_slices = int(num_slices_txt)
-            # # deal with edge cases
-            # if self.num_slices == 1:
-            #     self._zstack_frames = 1
-            # elif self.num_slices > 1:
-            #     self._zstack_frames = self.num_slices + 1
-            # else:  # e.g. negative number or 0 accidentally input
-            #     self.num_slices = 1
-            #     self._zstack_frames = 1
-            #     self.numSlicesInput.setText('1')
+            # deal with edge cases
+            if self.num_slices<=-0:  # e.g. negative number or 0 accidentally input
+                self.num_slices = 1
+                self.numSlicesInput.setText('1')
         except ValueError:  # accidentally entered something that's not a number
             self.numSlicesInput.setText('1')  # default to a single slince
             self.num_slices = 1
-            self._zstack_frames = 1
-
-        # # update the timing information
-        # if self.ch1_active:
-        #     self._reinit_zbuffer(1)
-
-        # if self.ch2_active:
-        #     self._reinit_zbuffer(2)
-
-        # self._get_frame_period()
-        # self._zstack_period = self._frame_period * self._zstack_frames
-
 
     def frame_update(self):
         '''
@@ -303,14 +275,6 @@ class BumpBlaster(pg_gui.MainWindow):
             self.ch2_curr_image.setImage(self._zproj[2])
             self.ch2_plot.autoRange()
 
-    def _get_channel_image(self, channel):
-        '''
-        Read image data over prairie link
-        This will be the data that is currently displayed on the viewer from prairie link. It is not the data that is
-        being saved to disk. Any averaging or other parameters that affect the data display will also affect this data.
-        :return:
-        '''
-        return np.array(self.pl.GetImage_2(channel, self.pl.LinesPerFrame(), self.pl.PixelsPerLine()))  # .T
 
     def load_EB_rois(self):
         '''
