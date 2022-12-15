@@ -122,4 +122,4 @@ def numba_histogram(a, bins, bin_edges=None, norm=True):
     if norm:
         hist /= hist.sum()
 
-    return hist, bin_edges
+    return hist, bin_edges, (bin_edges[:-1]+bin_edges[1:])/2
