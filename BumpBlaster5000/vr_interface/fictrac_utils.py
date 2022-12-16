@@ -283,7 +283,7 @@ class FicTracSocketManager:
 
     def reset_plot_dequeus(self):
 
-        with self._plot_deque_lock:
+        with self._ft_buffer_lock:
             for k,v in self.columns_to_read.items():
                 self.plot_deques[k].reset()
                 
