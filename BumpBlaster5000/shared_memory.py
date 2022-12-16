@@ -173,7 +173,7 @@ class CircularFlatBuffer:
                                             name=self.name+'_first_filled_inst',
                                             dtype=int).create()
         self.first_filled_index = self._first_filled_inst.buff
-        self.first_filled_index[0] = self.length
+        self.first_filled_index[0] = self.length-1
 
         self._creator = True
         return self

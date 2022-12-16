@@ -78,8 +78,8 @@ class BumpBlaster(pg_gui.WidgetWindow):
         
         
         # manually set heading or index pin
-        self.heading_pin_send.clicked.connect(self.send_heading_val)
-        self.index_pin_send.clicked.connect(self.send_index_val)
+        self.heading_pin_send_button.clicked.connect(self.send_heading_val)
+        self.index_pin_send_button.clicked.connect(self.send_index_val)
 
     def start_scan(self):
         '''
