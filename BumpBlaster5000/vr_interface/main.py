@@ -120,7 +120,9 @@ class BumpBlaster(pg_gui.WidgetWindow):
             with open(filename,'wb') as file:
                 pickle.dump(self.ft_frames,file)
                 
-            self.ft_frames = {'start': [], 'opto': [], 'abort': []}
+            #ToDo: some issue going on here with values being overwritten
+            
+            # self.ft_frames = {'start': [], 'opto': [], 'abort': []}
             
 
         
