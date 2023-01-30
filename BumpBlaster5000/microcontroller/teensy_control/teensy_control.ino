@@ -181,6 +181,10 @@ void execute_state(int cmd, int cmd_len) {
         bk_scan_trig_state = true;
         bk_scan_trig_timestamp = millis();
         bk_isscanning = true;
+
+        SerialUSB2.print("start, "); // start trigger falling edge Fictrac frame
+        SerialUSB2.print(ft_current_frame);
+        SerialUSB2.print('\n');
       }
       break;
     case 2: // kill scan
@@ -192,7 +196,7 @@ void execute_state(int cmd, int cmd_len) {
         SerialUSB2.print("abort, "); // abort trigger rising edge Fictrac frame
         SerialUSB2.print(ft_current_frame);
         SerialUSB2.print('\n');
-        SerialUSB2.println("END QUEUE");
+        // SerialUSB2.println("END QUEUE");
 
         // send kill scan signal to PrarieView API
         BKSERIAL.println("-Abort");
@@ -308,7 +312,7 @@ void check_pins() {
   int curr_timestamp = millis();
   if (bk_scan_trig_state & ((curr_timestamp - bk_scan_trig_timestamp) > bk_trig_timeout)) {
     if (bk_isscanning) { // if this is a start scan trigger
-      SerialUSB2.print("start, "); // start trigger falling edge Fictrac frame
+      SerialUSB2.print("start_trig_falling_edge, "); // start trigger falling edge Fictrac frame
       SerialUSB2.print(ft_current_frame);
       SerialUSB2.print('\n');
     }
