@@ -130,5 +130,6 @@ dmypy.json
 
 .idea/
 scratch/scratch.txt
-scratch/*.dat
-scratch/*.log
+scratch/*
+.gitignore
+
