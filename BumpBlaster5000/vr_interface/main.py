@@ -28,7 +28,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
         self.trigger_opto_button.clicked.connect(self.trigger_opto)
         
         ## fictrac
-        self.ft_frames = {'start': [], 'opto': [], 'abort': []}
+        self.ft_frames = {'start': [], 'opto': [], 'abort': [], 'start_trig_falling_edge':[]}
         self.ft_manager = ft_utils.FicTracSocketManager()
         self.launch_fictrac_checkbox.stateChanged.connect(self.toggle_fictrac)
         self._ft_process = None
@@ -92,15 +92,16 @@ class BumpBlaster(pg_gui.WidgetWindow):
         self.trigger_opto_button.setEnabled(True)
         self.stop_scan_button.setEnabled(True)
 
-        # self.ft_frames = {'start': None, 'opto': None, 'abort': None}
+        
 
     def stop_scan(self):
         '''
 
         :return:
         '''
+        
         self.teensy_input_serial.write(b'0,2\n')  # see teensy_control.ino
-        while self.ft_frames['abort'] is None:
+        while (len(self.ft_frames['abort']) == 0):
             time.sleep(.01)
 
         self.start_scan_button.setEnabled(True)
@@ -121,7 +122,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
                 pickle.dump(self.ft_frames,file)
                 
             #ToDo: some issue going on here with values being overwritten
-            
+            self.ft_frames = {'start': [], 'opto': [], 'abort': [], 'start_trig_falling_edge':[]}
             # self.ft_frames = {'start': [], 'opto': [], 'abort': []}
             
 
@@ -229,7 +230,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
         while self._isreading_teensy.is_set():
             while srl.inWaiting() > 0:
                 msg = srl.readline().decode('UTF-8').rstrip().split(',')
-                if msg[0] in set(('start', 'opto', 'abort')):
+                if msg[0] in set(('start', 'opto', 'abort', 'start_trig_falling_edge')):
                     self.ft_frames[msg[0]].append(int(msg[1]))
         srl.close()
 
