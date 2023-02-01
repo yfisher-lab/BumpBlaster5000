@@ -86,7 +86,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
 
         :return:
         '''
-
+        #ToDo: fix to write to input_queue
         self.teensy_input_serial.write(b'0,1\n')  # see teensy_control.ino
         self.start_scan_button.setEnabled(False)
         self.trigger_opto_button.setEnabled(True)
