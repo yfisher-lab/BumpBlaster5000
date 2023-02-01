@@ -1,5 +1,6 @@
 import numpy as np
 from time import sleep
+from datetime import datetime
 
 
 
@@ -11,7 +12,7 @@ def build_cmd_str(queue):
     n_spots = 8
 
 
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(int(datetime.now().timestamp()))
     headings = np.arange(0, max_dac_val, max_dac_val/n_spots, dtype=int)
     print(headings.shape)
     headings = np.roll(headings,rng.integers(0,n_spots))
