@@ -18,11 +18,11 @@ def build_cmd_str(queue):
     cmd = [cmd_len, 10]
     # set index to 1 to hide scene
     # heading, index, opto_bool, opto_delay, combined_dur
-    cmd.extend([0,  4095,   0,  0, 10000])
+    cmd.extend([0,  4095,   0,  0, 5000])
     # set each 
     for h in headings.tolist():
         cmd.extend([h, 0, 1, 0, 2000])
-    cmd.extend([0,  4095,   0,  0, 10000])
+    cmd.extend([0,  4095,   0,  0, 5000])
 
 
     cmd_str = ""
@@ -32,7 +32,7 @@ def build_cmd_str(queue):
 
     queue.put(cmd_str.encode('UTF-8'))
 
-    sleep(36)
+    sleep(26.1)
     queue.put('0,5\n'.encode('UTF-8'))
     queue.put('1,7,0\n'.encode('UTF-8'))
 
