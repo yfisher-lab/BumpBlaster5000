@@ -87,7 +87,8 @@ class BumpBlaster(pg_gui.WidgetWindow):
         :return:
         '''
         #ToDo: fix to write to input_queue
-        self.teensy_input_serial.write(b'0,1\n')  # see teensy_control.ino
+        self.teensy_input_queue.put(b'0,1\n')
+        # self.teensy_input_serial.write(b'0,1\n')  # see teensy_control.ino
         self.start_scan_button.setEnabled(False)
         self.trigger_opto_button.setEnabled(True)
         self.stop_scan_button.setEnabled(True)
@@ -99,8 +100,8 @@ class BumpBlaster(pg_gui.WidgetWindow):
 
         :return:
         '''
-        
-        self.teensy_input_serial.write(b'0,2\n')  # see teensy_control.ino
+        self.teensy_input_queue.put(b'0,2\n')
+        # self.teensy_input_serial.write(b'0,2\n')  # see teensy_control.ino
         while (len(self.ft_frames['abort']) == 0):
             time.sleep(.01)
 
@@ -132,7 +133,8 @@ class BumpBlaster(pg_gui.WidgetWindow):
 
         :return:
         '''
-        self.teensy_input_serial.write(b'0,3\n')  # see teensy_control.ino
+        self.teensy_input_queue.put(b'0,3\n')
+        # self.teensy_input_serial.write(b'0,3\n')  # see teensy_control.ino
 
 
     def toggle_send_orientation(self):
