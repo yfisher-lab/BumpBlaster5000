@@ -10,7 +10,7 @@ def build_cmd_str(queue):
 
     max_dac_val = 4096
     n_spots = 96 # one per pixel
-    n_reps = 3
+    n_reps = 5
 
     headings = np.arange(0, max_dac_val, max_dac_val/n_spots, dtype=int)
     # print(headings.shape)
@@ -22,7 +22,7 @@ def build_cmd_str(queue):
         for h in headings.tolist():
             cmd = '2, 8, ' + f"{h}" + ', 0\n' 
             queue.put(cmd.encode('UTF-8'))
-            sleep(1.9)
+            sleep(.2)
             # cmd.extend([h, 0, 1, 0, 1875])
     # cmd.extend([0,  4095,   0,  0, 5000])
     queue.put('1,7,4095\n'.encode('UTF-8'))
