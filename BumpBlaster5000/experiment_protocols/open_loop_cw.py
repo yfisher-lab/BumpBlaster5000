@@ -22,7 +22,7 @@ def build_cmd_str(queue):
         for h in headings.tolist():
             cmd = '2, 8, ' + f"{h}" + ', 0\n' 
             queue.put(cmd.encode('UTF-8'))
-            sleep(1.9)
+            sleep(.2)
             # cmd.extend([h, 0, 1, 0, 1875])
     # cmd.extend([0,  4095,   0,  0, 5000])
     queue.put('1,7,4095\n'.encode('UTF-8'))
