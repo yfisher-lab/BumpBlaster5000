@@ -13,8 +13,11 @@ pattern.Pats = zeros(npix*2, 11*npix, 12*npix, 2);
 img = im2double(rgb2gray(imread('street2.jpg')));
 img = img(1:300,1:end);
 img = img-min(min(img));
-img_3bit = round(img/max(max(img))*7);
-img_3bit_ds = imresize(img_3bit,[npix*2, 12*npix, 2]);
+img_ds = imresize(img,[npix*2, 12*npix]);
+img_3bit_ds = img_ds - min(min(img_ds));
+img_3bit_ds = round(img_3bit_ds/max(max(img_3bit_ds))*1);
+
+figure; imagesc(img_3bit_ds)
 
 
 for frame_index = 1:12*npix
@@ -30,7 +33,7 @@ pattern.BitMapIndex = process_panel_map(pattern);
 
 pattern.data = Make_pattern_vector(pattern);
 
-% dir_name = 'C:\Users\fisherlab\Documents\repos\BumpBlaster5000\BumpBlaster5000\experiment_protocols';
-% filename = [dir_name '\Pattern_bar_example_2pix'];
+dir_name = 'C:\Users\fisherlab\Documents\repos\BumpBlaster5000\BumpBlaster5000\experiment_protocols\G3_files';
+filename = [dir_name '\Pattern_street_view.mat'];
 
 save(filename, 'pattern');
