@@ -1,6 +1,7 @@
 import numpy as np
 from time import sleep
 from datetime import datetime
+import random
 
 
 
@@ -13,18 +14,20 @@ def build_cmd_str(queue):
     n_reps = 10
 
     headings = np.arange(0, max_dac_val, max_dac_val/n_spots, dtype=int)
+    headings = headings.tolist()
     # print(headings.shape)
 
 
     queue.put('1,7,4095\n'.encode('UTF-8'))
     sleep(5)
     for r in range(n_reps):
-        for h in headings.tolist():
+        random.shuffle(headings)
+        for h in headings:
             cmd = '2, 8, ' + f"{h}" + ', 0\n' 
             queue.put(cmd.encode('UTF-8'))
             sleep(1)
-            queue.put('1,7,4095\n'.encode('UTF-8'))
-            sleep(5)
+            queue.put('2, 8, 2000, 4095\n'.encode('UTF-8'))
+            sleep(1)
             # cmd.extend([h, 0, 1, 0, 1875])
     # cmd.extend([0,  4095,   0,  0, 5000])
     queue.put('1,7,4095\n'.encode('UTF-8'))
