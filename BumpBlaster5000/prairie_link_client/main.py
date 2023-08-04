@@ -15,6 +15,27 @@ if params.hostname != 'bard-smaug-slayer':
     import win32com.client
 
 class BumpBlaster(pg_gui.MainWindow):
+    
+    # read raw data stream, need to know correct number of slices in zstack
+    num_slices = 1
+    
+    # ch1 viewing defaults
+    ch1_active = False
+    ch1_stacks2avg = 1
+    ch1_frozen = False
+    
+    # ch2 viewing defaults
+    ch2_active = False
+    ch2_stacks2avg = 1
+    ch2_frozen = False
+    
+    # roi defaults
+    rois = None
+    roi_resolution = params.PC_PC_PARAMS['wedge_resolution']  # number of rois for EB
+    _rois_locked = False    
+    
+
+    
     def __init__(self):
         super(BumpBlaster, self).__init__()
         self.setupUi(self)
@@ -23,10 +44,60 @@ class BumpBlaster(pg_gui.MainWindow):
         pg.setConfigOptions(imageAxisOrder='row-major', antialias=True)
 
         # connect number of slices input, set default to 1
-        self.numSlicesInput.editingFinished.connect(self.set_num_slices)
+        self.num_slices_input.editingFinished.connect(self.set_num_slices)
         self.num_slices = 1
-        self._zstack_frames = 1
         self.numSlicesInput.setText('1')
+        
+        # connect read raw data stream
+        self.start_rrds_button.clicked.connect(self.start_rrds)
+        self.end_rrds_button.clicked.connect(self.end_rrds)
+        
+        # connect ch1 view buttons
+        self.ch1_active = False
+        self.ch1_stacks2avg = 1
+        self.ch1_set_active.stateChanged.connect(self.set_ch1_active)
+        self.ch1_num_stacks_input.editingFinished.connect(self.set_ch1_stacks2avg)
+        self.ch1_frozen = False
+        self.ch1_freeze_button.stateChanged.connect(self.set_ch1_frozen)
+        
+        # connect ch2 view buttons
+        self.ch2_active = False
+        self.ch2_stacks2avg = 1
+        self.ch2_set_active.stateChanged.connect(self.set_ch2_active)
+        self.ch2_num_stacks_input.editingFinished.connect(self.set_ch2_stacks2avg)
+        self.ch2_frozen = False
+        self.ch2_freeze_button.stateChanged.connect(self.set_ch2_frozen)
+        
+        
+        # connect ROI buttons
+        self.rois = None
+        self.roi_resolution = self._params['wedge_resolution']  # number of rois for EB
+        self.roi_masks = None
+        self.roi_centers = None
+        
+        self.load_eb_roi_button.clicked.connect(self.load_eb_rois)
+        self.load_pb_roi_button.clicked.connect(self.load_pb_rois)
+        
+        self.clear_roi_button.clicked.connect(self.clear_rois)
+        
+        self._rois_locked = False
+        self.lock_roi_checkbox.stateChanged.connect(self.lock_rois)
+        
+        # connect dff settings
+        
+        
+        # calculate bump toggle
+        
+        
+        # read vr toggle
+        
+        
+        # remote plot toggle
+        
+        
+    def connect_buttons(self):
+        
+        
 
         
         # connect to teensy serial port to read PL commands
