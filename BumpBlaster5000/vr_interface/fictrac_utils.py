@@ -72,7 +72,7 @@ class FicTracSocketManager:
         """
 
         if columns_to_read is None:
-            columns_to_read = {'heading': 17, 'integrated x': 20, 'integrated y': 21, 'speed': 19}
+            columns_to_read = {'heading': 17, 'integrated x': 15, 'integrated y': 16, 'speed': 19}
         self.ft_subprocess = FicTracSubProcess(fictrac_path=fictrac_path,
                                                config_file=config_file)
 
