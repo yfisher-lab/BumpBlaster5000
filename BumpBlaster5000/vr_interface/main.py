@@ -29,6 +29,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
         
         ## fictrac
         self.ft_frames = {'start': [], 'opto': [], 'abort': [], 'start_trig_falling_edge':[]}
+        self.ft_output_path = None
         self.ft_manager = ft_utils.FicTracSocketManager()
         self.launch_fictrac_checkbox.stateChanged.connect(self.toggle_fictrac)
         self._ft_process = None
