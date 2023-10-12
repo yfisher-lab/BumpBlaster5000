@@ -19,7 +19,7 @@ def build_cmd_str(queue):
     #to make a list of dac bit values equivalent to 0', 90', 180', and 270':
     max_dac_val = 4096
     min_dac_val = 0
-    n_spots = 5 
+    n_spots = 4 
     headings = np.arange(min_dac_val, max_dac_val, max_dac_val/n_spots, dtype=int)
     # headings = [0,1023,2046,3070]
 
