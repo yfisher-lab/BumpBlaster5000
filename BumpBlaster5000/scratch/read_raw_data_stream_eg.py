@@ -17,7 +17,7 @@ if __name__ == "__main__":
     samples = pl.LinesPerFrame() * pl.PixelsPerLine() * pl.SamplesPerPixel() * n_pmts
     print(samples)
     buffer_size = int(samples * n_buffer_frames)
-    BUFFER = c_int * buffer_size # np.zeros([buffer_size, ])
+    BUFFER = c_int * buffer_size 
     buffer = BUFFER(*[0 for i in range(buffer_size)])
     buffer_address = addressof(buffer)
     print("buffer initialized")

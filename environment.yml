@@ -14,7 +14,7 @@ dependencies:
   - ipython
   - pandas
   - pywin32
-  - python=3.6
+  - python=3.10
   - numba
   - pillow
   - pip:
