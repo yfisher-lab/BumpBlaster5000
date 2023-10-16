@@ -44,9 +44,10 @@ def build_cmd_str(queue):
         queue.put(bj2_cmd.encode('UTF-8')) #bar jump 
         sleep(t_bj)
     
-    if t_end > 0: #remainder of 5 minutes(if any) will be spent in closed loop
-        queue.put('0,5\n'.encode('UTF-8')) #closed loop
-        sleep(t_end)
+    
+    queue.put('0,5\n'.encode('UTF-8')) #closed loop
+    sleep(t_end)
+    queue.put('1,7,4095\n'.encode('UTF-8'))
 
 def run(queue):
 
