@@ -28,8 +28,8 @@ const byte ft_frame_pin = 2;
 #include <Wire.h>
 #include <Adafruit_MCP4725.h>
 Adafruit_MCP4725 heading_dac;
-Adafruit_MCP4725 x_dac;
-Adafruit_MCP4725 y_dac;
+//Adafruit_MCP4725 x_dac;
+//Adafruit_MCP4725 y_dac;
 Adafruit_MCP4725 index_dac;
 const int max_dac_val = 4095; // 4096 - 12-bit resolution
 const byte ft_num_cols = 26; 
@@ -76,9 +76,9 @@ void setup() {
 
 
   // start DACs
-  heading_dac.begin(0x62,&Wire);
-  x_dac.begin(0x63,&Wire);
-  y_dac.begin(0x62,&Wire1);
+  heading_dac.begin(0x62,&Wire1);
+//  x_dac.begin(0x63,&Wire);
+//  y_dac.begin(0x62,&Wire1);
 //  4th dac available for additional output
   index_dac.begin(0x63, &Wire1);
 
@@ -431,11 +431,11 @@ void ft_state_machine() {
       break;
     
     case 12: // x
-      x_dac.setVoltage(int(max_dac_val * (atof(_ft_chars) + PI) / (2 * PI)),false);
+//      x_dac.setVoltage(int(max_dac_val * (atof(_ft_chars) + PI) / (2 * PI)),false);
       break;
 
     case 13: // y
-      y_dac.setVoltage(int(max_dac_val * (atof(_ft_chars) + PI) / (2 * PI)),false);
+//      y_dac.setVoltage(int(max_dac_val * (atof(_ft_chars) + PI) / (2 * PI)),false);
       break;
 
   }
