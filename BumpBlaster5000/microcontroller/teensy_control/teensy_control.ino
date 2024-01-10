@@ -33,7 +33,7 @@ Adafruit_MCP4725 heading_dac;
 Adafruit_MCP4725 index_dac;
 const int max_dac_val = 4095; // 4096 - 12-bit resolution
 const byte ft_num_cols = 26; 
-const byte ft_dropped_frame_pin = 5; 
+// const byte ft_dropped_frame_pin = 5; 
 
 //Bruker Triggers
 const byte bk_scan_trig_pin = 3; 
@@ -45,6 +45,11 @@ const byte bk_opto_trig_pin = 4;
 bool bk_opto_trig_state = false;
 int bk_opto_trig_timestamp;
 const int bk_trig_timeout = 10;
+
+const byte pump_trig_pin = 5;
+bool pump_trig_state = false;
+int pump_trig_timestamp;
+const int pump_trig_timeout = 10;
 
 bool opto_countdown_bool = false;
 int opto_countdown_delay = 100;
@@ -71,8 +76,8 @@ void setup() {
   // digital pins
   pinMode(ft_frame_pin,OUTPUT);
   digitalWrite(ft_frame_pin,LOW);
-  pinMode(ft_dropped_frame_pin, OUTPUT); 
-  digitalWriteFast(ft_dropped_frame_pin, LOW);
+  // pinMode(ft_dropped_frame_pin, OUTPUT); 
+  // digitalWriteFast(ft_dropped_frame_pin, LOW);
 
 
   // start DACs
@@ -91,6 +96,10 @@ void setup() {
   digitalWriteFast(bk_opto_trig_pin, LOW);
   bk_opto_trig_timestamp = millis();
 
+  pinMode(pump_trig_pin, OUTPUT);
+  digitalWriteFast(pump_trig_pin, LOW);
+  pump_trig_timestamp = millis();
+
   // opto_countdown_timestamp = millis();
 
   BKSERIAL.begin(115200);
@@ -106,22 +115,25 @@ FASTRUN void loop() { // FASTRUN teensy keyword
     state_machine();
     ft_state();
     check_pins();
-    check_pins();
+    // check_pins();
 }
 
 void state_machine() {
   static int state_cmd_len = -1000;
   static int cmd = 0;
+  static int msg_timeout = 1000;
+  int begin_msg_timestap = -1; 
+  int curr_msg_timestamp;
+
   
   // static int val = 0;
 
-  recv_state_data();
+  curr_msg_timestamp = recv_state_data();
   if (new_state) {
     strcpy(_state_chars,state_chars);
     if (state_index==0) { // first value is the length of the state machine message
       state_cmd_len = atoi(_state_chars);
-//      int val_arr[state_cmd_len];
-//      int val_arr[state_cmd_len];
+      begin_msg_timestamp = millis();
     } 
     else if (state_index == 1) { // second value is the state to go to in state machine
       cmd = atoi(_state_chars);
@@ -132,21 +144,27 @@ void state_machine() {
     
     state_index +=1; // update index
     if ((state_index-2) == state_cmd_len) { // if reached end of state machine message
+      begin_msg_timestamp=-1;
       execute_state(cmd, state_cmd_len);
       state_index = 0;
     }
     new_state = false;
   }
+  if ((curr_msg_timestamp-begin_msg_timestamp) & (begin_msg_timestamp>0)) { // if command isn't read before timeout
+    
+  }
   
 }
 
-void recv_state_data() { // receive USB1 data, ov
+int recv_state_data() { // receive USB1 data, ov
   static byte ndx = 0; // buffer index
   static char delimiter = ','; // column delimiter
   static char endline = '\n'; // endline character
   char rc; // current byte;
+  int timestamp
 
   if (SerialUSB1.available() > 0){
+    timestamp = millis();
     rc = SerialUSB1.read();
     if ((rc == endline) | (rc==delimiter)) { // end of frame or new column
       state_chars[ndx] = '\0'; // terminate string
@@ -162,6 +180,8 @@ void recv_state_data() { // receive USB1 data, ov
 
     }
   }
+
+  return timestamp
 }
 
 void execute_state(int cmd, int cmd_len) {
@@ -245,6 +265,15 @@ void execute_state(int cmd, int cmd_len) {
     case 11: // kill list of points
       multiple_points=false;
       break;
+
+    case 12: // trig pump
+      trig_pump();
+      break;
+
+    case 13: // trig pump and opto with specified delay
+      // opto_bool, opto_delay
+      run_pump_point(val_arr[0], val_arr[1]);
+      break;
   }
   
 
@@ -293,6 +322,17 @@ void trig_opto() {
   SerialUSB2.print('\n');
 }
 
+void trig_pump() {
+
+  digitalWriteFast(pump_trig_pin, HIGH);
+  pump_trig_state = true;
+  pump_trig_timestamp = millis();
+
+  SerialUSB2.print("pump, ");
+  SerialUSB2.print(ft_current_frame);
+  SerialUSB2.print('\n')
+}
+
 
 void check_pins() {
   static int va_index=0;
@@ -316,6 +356,12 @@ void check_pins() {
   if (bk_opto_trig_state & ((curr_timestamp - bk_opto_trig_timestamp) > bk_trig_timeout)) {
     digitalWriteFast(bk_opto_trig_pin,LOW);
     bk_opto_trig_state=false;
+  }
+
+  // flip opto trigger down
+  if (pump_trig_state & ((curr_timestamp - pump_trig_timestamp) > pump_trig_timeout)) {
+    digitalWriteFast(pump_trig_pin,LOW);
+    pump_trig_state=false;
   }
 
   // flip opto up after specified delay
