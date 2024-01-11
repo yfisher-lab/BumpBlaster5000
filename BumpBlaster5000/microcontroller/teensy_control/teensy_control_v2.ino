@@ -25,7 +25,6 @@ struct {
 bk_scan_trig.is_scanning = false;
 
 Trigger bk_opto_trig(4,10);
-
 Trigger pump_trig(5,10);
 
 
@@ -242,8 +241,8 @@ void run_point(int _heading, int _index, int _opto_bool, int _opto_delay) {
       }
 }
 
-// heading, index, opto_bool, opto_delay
-void run_pump_point(int _opto_delay) {
+// opto_bool opto_delay
+void run_pump_point(int _opto_bool, int _opto_delay) {
   if (_opto_delay>=0) {
 
         trig_pump();
@@ -255,10 +254,8 @@ void run_pump_point(int _opto_delay) {
 
         
         trig_opto();
-
-        ft_handler.set_heading_on_delay(_-1*_opto_delay);
-        ft_handler.set_index_on_delay(-1*_opto_delay);
-
+        
+        pump_trig.trigger_on_delay(-1*_opto_delay)
 
       }
 }
