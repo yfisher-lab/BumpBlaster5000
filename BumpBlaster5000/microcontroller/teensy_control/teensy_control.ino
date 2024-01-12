@@ -156,9 +156,9 @@ void state_machine() {
     }
     new_state = false;
   }
-  if ((curr_msg_timestamp-begin_msg_timestamp) & (begin_msg_timestamp>0)) { // if command isn't read before timeout
+  // if ((curr_msg_timestamp-begin_msg_timestamp) & (begin_msg_timestamp>0)) { // if command isn't read before timeout
     
-  }
+  // }
   
 }
 

@@ -1,7 +1,7 @@
 // State reading variables
 #include <cstring>
-#include "Trigger"
-#include "FTHandler"
+#include "Trigger/Trigger.h"
+#include "FTHandler/FTHandler.h"
 
 
 
