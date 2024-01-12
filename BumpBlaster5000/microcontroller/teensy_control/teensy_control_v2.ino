@@ -3,17 +3,11 @@
 #include "Trigger"
 #include "FTHandler"
 
-const int num_chars = 256;
-char state_chars[num_chars];
-char _state_chars[num_chars];
-bool new_state = false;
-int state_index = 0;
-int val_arr[1024]; // 204 points can be initialized 
 
 
 // const int state_num_vals = 2;
 const byte ft_frame_pin = 2; 
-FTHandler ft_handler(ft_frame_pin);
+FTHandler ft_handler(ft_frame_pin, &Serial);
 
 
 
@@ -27,12 +21,13 @@ bk_scan_trig.is_scanning = false;
 Trigger bk_opto_trig(4,10);
 Trigger pump_trig(5,10);
 
+// command serial handler
+StateSerialHandler state_serial_handler(&SerialUSB1);
 
-bool multiple_points = false;
-int n_points;
-int current_point;
-int next_point_time;
-int current_point_timestamp;
+// class for running visual and optogenetic stimulation
+RunVisOptoPoints vis_opto_pointrunner(&state_serial_handler.cmd,
+                                      &state_serial_handler.cmd_array)
+
 
 #define BKSERIAL Serial6 // update to current pin settings
 
@@ -54,86 +49,22 @@ void setup() {
 void yield() {} // get rid of hidden arduino yield function
 
 FASTRUN void loop() { // FASTRUN teensy keyword
-    state_machine();
-    ft_state();
-    check_pins();
-}
-
-
-
-void state_machine() {
-  static int state_cmd_len = -1000;
-  static int cmd = 0;
-  static int msg_timeout = 1000;
-  int begin_msg_timestap = -1; 
-  int curr_msg_timestamp;
-
+  state_serial_handler.process_srl_data();
+  execute_state();
   
-  // static int val = 0;
-
-  curr_msg_timestamp = recv_state_data();
-  if (new_state) {
-    strcpy(_state_chars,state_chars);
-    if (state_index==0) { // first value is the length of the state machine message
-      state_cmd_len = atoi(_state_chars);
-      begin_msg_timestamp = millis();
-    } 
-    else if (state_index == 1) { // second value is the state to go to in state machine
-      cmd = atoi(_state_chars);
-    }
-    else { // the remaining value are parameters specific to the state
-      val_arr[state_index-2] = atoi(_state_chars);
-    }
-    
-    state_index +=1; // update index
-    if ((state_index-2) == state_cmd_len) { // if reached end of state machine message
-      begin_msg_timestamp=-1;
-      execute_state(cmd, state_cmd_len);
-      state_index = 0;
-    }
-    new_state = false;
-  }
-  if ((curr_msg_timestamp-begin_msg_timestamp) & (begin_msg_timestamp>0)) { // if command isn't read before timeout
-    //abort 
-  }
+  ft_handler.process_serial_data();
+  ft_handler.update_dacs();
   
+  check_timers();
 }
 
-int recv_state_data() { // receive USB1 data, ov
-  static byte ndx = 0; // buffer index
-  static char delimiter = ','; // column delimiter
-  static char endline = '\n'; // endline character
-  char rc; // current byte;
-  int timestamp
+void execute_state() {
 
-  if (SerialUSB1.available() > 0){
-    timestamp = millis();
-    rc = SerialUSB1.read();
-    if ((rc == endline) | (rc==delimiter)) { // end of frame or new column
-      state_chars[ndx] = '\0'; // terminate string
-      ndx = 0;
-      new_state = true;
-    } 
-    else {
-      state_chars[ndx] = rc;
-      ndx++;
-      if (ndx >= num_chars) {
-        ndx = num_chars - 1;
-      } 
-
-    }
-  }
-
-  return timestamp
-}
-
-void execute_state(int cmd, int cmd_len) {
-
-  switch(cmd){
+  switch(state_serial_handler.cmd){
     case 0: // do nothing
       break;
     case 1: // flip start scan trigger high
-      if (!bk_isscanning) {
+      if (!bk_scan_trig.is_scanning) {
         bk_scan_trig.trig.trigger();
         bk_scan_trig.is_scanning = true;
 
@@ -169,37 +100,28 @@ void execute_state(int cmd, int cmd_len) {
       break;
 
     case 6: // set heading_dac value
-      ft_handler.set_heading(val_arr[0]);
+      ft_handler.set_heading(state_serial_handler.cmd_arr[0]);
       break;
 
     case 7: // set index_dac value 
-      ft_handler.set_index(var_arr[1]);
+      ft_handler.set_index(state_serial_handler.cmd_arr[0]);
       break;
 
     case 8: // set heading and index dac
-      ft_handler.set_heading(val_arr[0]);
-      ft_handler.set_index(var_arr[1]);
+      ft_handler.set_heading(state_serial_handler.cmd_arr[0]);
+      ft_handler.set_index(state_serial_handler.cmd_arr[1]);
       break;
 
     case 9: // set heading and index dac, trigger opto with specified delay
-      // heading, index, opto_bool, opto_delay
-      run_point(val_arr[0], val_arr[1], val_arr[2], val_arr[3]);
+      vis_opto_point_runner.start_points();
       break;
 
     case 10: // run list of points
-     // each point: heading, index, opto_bool, opto_delay, combined_dur
-      multiple_points = true;
-      n_points = cmd_len/5;     
-      current_point = 0;
-      
-      run_point(val_arr[0], val_arr[1], val_arr[2], val_arr[3]);
-      
-      next_point_time = val_arr[4];
-      current_point_timestamp = millis();
+      vis_opto_point_runner.start_points();
       break;
 
     case 11: // kill list of points
-      multiple_points=false;
+      vis_opto_point_runner.abort_points()
       break;
 
     case 12: // trig pump
@@ -211,17 +133,184 @@ void execute_state(int cmd, int cmd_len) {
       run_pump_point(val_arr[0], val_arr[1]);
       break;
   }
-  
-
-
 }
 
 
-// heading, index, opto_bool, opto_delay
-void run_point(int _heading, int _index, int _opto_bool, int _opto_delay) {
-  if (_opto_delay>=0) {
-        ft_handler.set_heading(_heading);
-        ft_handler.set_index(_index);
+
+void check_timers() {
+  static int va_index=0;
+
+  // flip start down
+  int curr_timestamp = millis();
+  if (bk_scan_trig.trig.pin_state & ((curr_timestamp - bk_scan_trig.trig.get_timestamp()) > 10)) {
+    if (bk_scan_trig.is_scanning) { // if this is a start scan trigger
+      SerialUSB2.print("start_trig_falling_edge, "); // start trigger falling edge Fictrac frame
+      SerialUSB2.print(ft_handler.current_frame);
+      SerialUSB2.print('\n');
+    }
+    bk_scan_trig.trig.check(curr_timestamp);
+  }
+
+  // flip opto trigger down
+  bk_opto_trig.check(curr_timestamp);
+  
+  // flip opto trigger down
+  pump_trig.check(curr_timestamp);
+  
+
+  // deal with multiple points
+  vis_opto_point_runner.check_for_next_point(curr_timestamp);
+}
+
+
+class StateSerialHandler {
+  
+  Stream *Srl;
+
+  int buffer_ndx = 0;
+  char delimiter = ','; 
+  char endline = '\n';
+  char curr_byte;
+  
+  int data_rcvd_timestamp = -1;
+
+
+  char chars[num_chars];
+  char _chars[num_chars];
+  bool new_data = false;
+  
+  int msg_timeout_len = 1000;
+  int begin_msg_timestamp = -1;
+
+  public:
+    int cmd = 0;
+    int cmd_len = -1;
+    int cmd_index = 0;
+    
+    int cmd_arr[1024]; // 204 points can be initialized 
+
+    StateSerialHandler(Stream *srl_port) {
+      Srl = srl_port;
+    }
+
+    void receive_srl_data() {
+
+      if (Srl.available() > 0){
+        data_rcvd_timestamp = millis();
+        curr_byte = Srl.read();
+        if ((curr_byte == endline) | (curr_byte==delimiter)) { // end of frame or new column
+          chars[buffer_ndx] = '\0'; // terminate string
+          buffer_ndx = 0;
+          new_data = true;
+        } 
+        else {
+          chars[buffer_ndx] = curr_byte;
+          buffer_ndx++;
+          if (buffer_ndx >= num_chars) {
+            buffer_ndx = num_chars - 1;
+          } 
+        new_data = false;
+        }
+      }
+      new_data = false;
+    }
+
+
+    void process_srl_data() {
+      // static int val = 0;
+
+      receive_srl_data();
+      if (new_data) {
+        
+        strcpy(_chars,chars);
+        
+        if (cmd_index==0) { // first value is the length of the state machine message
+          cmd_len = atoi(_chars);
+          begin_msg_timestamp = millis();
+        } 
+        else if (cmd_index == 1) { // second value is the state to go to in state machine
+          cmd = atoi(_chars);
+        }
+        else { // the remaining value are parameters specific to the state
+          cmd_arr[cmd_index-2] = atoi(_chars);
+        }
+        
+        cmd_index++; // update index
+        if ((cmd_index-2) == cmd_len) { // if reached end of state machine message
+          begin_msg_timestamp=-1;
+          cmd_index = 0;
+        }
+      }
+
+
+      if (((data_rcvd_timestamp-begin_msg_timestamp)>msg_timeout)
+          & (begin_msg_timestamp>0)) { // if command isn't read before timeout
+        //abort 
+        cmd = 5; // return to closed loop
+        cmd_len = 0;
+        begin_msg_timestamp = -1;
+      }
+    
+    }
+  }
+
+
+class RunVisOptoPoints {
+
+  int *cmd_len;
+  int *cmd_arr[1024];
+  int n_points;
+  
+  const int pnt_len = 5;
+
+  int point_start_time = -1;
+  int curr_point;
+  int start_ind;
+
+  int next_point_time;
+  bool pts_complete; 
+  
+
+
+  public: 
+    RunVisOptoPoints(int *_cmd_len, int *_cmd_arr[1024]) {
+      cmd_len = _cmd_len;
+      cmd_arr = _cmd_arr;
+      pts_complete= true;   
+    }
+
+    void start_points() {
+      n_points = cmd_len/pnt_len;
+      pts_complete = false;
+
+      if (n_points==0) {
+        pts_complete = true;
+      }
+      point_start_time = millis();
+      curr_point = 0;
+      if (!pts_complete){
+        run_point();  
+      }
+
+    }
+
+    void run_point() {
+      const int _h;
+      const int _i;
+      const int _opto_bool;
+      const int _opto_delay;
+      
+      start_ind = curr_point*pnt_len;
+      _h = cmd_arr[start_ind];
+      _i = cmd_arr[start_ind + 1];
+      _opto_bool = cmd_arr[start_ind + 2];
+      _opto_del = cmd_arr[start_ind + 3];
+
+      next_point_millis = cmd_arr[start_ind + 4];
+
+      if (_opto_delay>=0) {
+        ft_handler.set_heading(_h);
+        ft_handler.set_index(_i);
         
         
         if (_opto_bool>0) {
@@ -229,17 +318,40 @@ void run_point(int _heading, int _index, int _opto_bool, int _opto_delay) {
         }
         
       } else {
-
+        
         if (_opto_bool>0) {
-          trig_opto();
+          opto_trig.trigger();
         }
-
+        
         ft_handler.set_heading_on_delay(_-1*_opto_delay);
         ft_handler.set_index_on_delay(-1*_opto_delay);
-
-
       }
+
+
+    }
+
+    void check_for_next_point(int curr_time) {
+      if (!pts_complete) {
+        if (curr_time>(point_start_time+next_point_time)) {
+          curr_point++;
+          if (curr_point == n_points) {
+            pts_complete=true;
+          } else {
+            point_start_time = curr_time;
+            run_point();
+          }
+        }
+      }
+    }
+
+    void abort_points() {
+      pts_complete = true;
+    }
+
 }
+
+
+
 
 // opto_bool opto_delay
 void run_pump_point(int _opto_bool, int _opto_delay) {
@@ -252,9 +364,7 @@ void run_pump_point(int _opto_bool, int _opto_delay) {
         
       } else {
 
-        
-        trig_opto();
-        
+        trig_opto();        
         pump_trig.trigger_on_delay(-1*_opto_delay)
 
       }
@@ -277,70 +387,4 @@ void trig_pump() {
   SerialUSB2.print(ft_handler.current_frame);
   SerialUSB2.print('\n')
 }
-
-
-void check_trig_pins() {
-  static int va_index=0;
-
-  // flip start down
-  int curr_timestamp = millis();
-  if (bk_scan_trig.trig.pin_state & ((curr_timestamp - bk_scan_trig.trig.get_timestamp()) > 10)) {
-    if (bk_scan_trig.is_scanning) { // if this is a start scan trigger
-      SerialUSB2.print("start_trig_falling_edge, "); // start trigger falling edge Fictrac frame
-      SerialUSB2.print(ft_handler.current_frame);
-      SerialUSB2.print('\n');
-    }
-    bk_scan_trig.trig.check(curr_timestamp);
-  }
-
-  // flip opto trigger down
-  bk_opto_trig.check(curr_timestamp);
   
-  // flip opto trigger down
-  pump_trig.check(curr_timestamp);
-  
-
-
-
-  // deal with multiple points
-  if (multiple_points) {
-    if (current_point < n_points-1){
-      if ((curr_timestamp-current_point_timestamp)>next_point_time) {
-        
-        
-        va_index = (current_point + 1) * 5;
-
-        
-        run_point(val_arr[va_index], val_arr[va_index+1], val_arr[va_index+2], val_arr[va_index+3]);
-        next_point_time = val_arr[va_index+4];
-        current_point_timestamp = millis();
-        current_point++;
-      }
-    } else {
-      multiple_points = false;
-    }
-  }
-
-}
-
-
-void ft_state() {
-    ft_handler.process_serial_data();
-    ft_handler.update_dacs();
-}
-  
-// col 1 frame counter
-// col 2-4 delta rotation vector (x,y,z) cam coords
-// col 5 delta rotation error
-// col 6-8 delta rotation in lab coordinates
-// col 9-11 abs. rot. vector cam coords
-// col 12-14 abs. rot. vector lab coords
-// col 15-16 integrated x/y lab coords
-// col 17 integrated heading lab coords
-// col 18 movement direction lab coords (add col 17 to get world centric direction)
-// col 19 running speed. scale by sphere radius to get true speed
-// col 20-21 integrated x/y neglecting heading
-// col 22 timestamp either position in video file or frame capture time
-// col 23 sequence counter - usually frame counter but can reset is tracking resets
-// col 24 delta timestep since last frame
-// col 25 alt timestamp - frame capture time (ms since midnight)

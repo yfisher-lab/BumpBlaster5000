@@ -2,12 +2,13 @@
 #include "FTHandler.h"
 
 
-FTHandler::FTHander(int f_pin) {
+FTHandler::FTHander(int f_pin, Stream *srl_port) { // add serial line reference to constructor? 
     frame_pin = f_pin;
     current_frame = 0;
     closed_loop = true;
     new_data = false;
     col = 0;
+    Srl = srl_port
 }
         
 void FTHandler::init(uint8_t h_dac_addr, TwoWire *h_dac_wire, int i_dac_addr, TwoWire *i_dac_wire) {
@@ -23,7 +24,7 @@ void FTHandler::init(uint8_t h_dac_addr, TwoWire *h_dac_wire, int i_dac_addr, Tw
 
 bool FTHandler::receive_srl_data() {
 
-    if (Serial.available() > 0) { // cannot use while(Serial.available()) because Teensy will read all 
+    if (Srl.available() > 0) { // cannot use while(Serial.available()) because Teensy will read all 
         curr_byte = Serial.read(); 
         if ((curr_byte == endline)|(curr_byte==delimiter)) { // end of frame or new column      
           _chars[buffer_ndx] = '\0'; // terminate the string
@@ -96,6 +97,14 @@ void FTHandler::process_serial_data(){
 
 void FTHandler::update_dacs() {
     // check on delay timers
+    curr_time = millis();
+    if (heading_on_delay & (curr_time>(heading_delay_timestamp + heading_delay))) {
+        FTHandler::set_heading(delayed_heading_val);
+    }
+    if (index_on_delay & (curr_time>(index_delay_timestamp + index_delay))) {
+        FTHandler::set_index(delayed_index_val)
+    }
+
 
     //  set dac vals
     heading_dac.setVoltage(int(max_dac_val * heading ), false);
@@ -116,9 +125,7 @@ void FTHandler::set_heading_offset(double o) {
 }
 
 void FTHandler::rotate_scene(double r) {
-    
     ft_heading_offset = fmod(ft_heading_offset + r, 2*PI);
-
 }
 
 void FTHandler::get_index() {
@@ -126,15 +133,20 @@ void FTHandler::get_index() {
 }
 
 void FTHandler::set_index(int i) {
-
     index = index+i;
     index = min(max(index, 0), max_dac_val);
 }
 
-void FTHandler::set_heading_on_delay(int t){
-
+void FTHandler::set_heading_on_delay(int t, double h){
+    heading_on_delay = true;
+    heading_delay = t;
+    heading_delay_timestamp = millis();
+    delayed_heading_val = h;
 }
 
-void FTHandler::set_index_on_delay(int t) {
-
+void FTHandler::set_index_on_delay(int t, int i ) {
+    index_on_delay = true;
+    index_delay = t;
+    index_delay_timestamp = millis();
+    delayed_index_val = i; 
 }
