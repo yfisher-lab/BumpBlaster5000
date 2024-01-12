@@ -5,18 +5,23 @@
 
 class Trigger {
     int pin_id;
-    bool _state;
-    int _timestamp;
+    bool state;
+    int timestamp;
     int timeout; 
     
+    int delay_timer;
+    bool on_delay=false;
+    int delay; 
+
     public:
         Trigger(int id, int to);
         void init();
         void trigger();
-        void check();
+        void trigger_on_delay(int t);
+        void check(int curr);
         bool pin_state();
         int get_timestamp();
-}
+};
 
 
 

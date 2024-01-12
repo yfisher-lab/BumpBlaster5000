@@ -1,4 +1,4 @@
-#include "Trigger.h"
+#include "/abs/path/to/Trigger.h"
 
 void setup() {
   // put your setup code here, to run once:

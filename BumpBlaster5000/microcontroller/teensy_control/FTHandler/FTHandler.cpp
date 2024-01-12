@@ -2,16 +2,20 @@
 #include "FTHandler.h"
 
 
-FTHandler::FTHander(int f_pin, Stream *srl_port) { // add serial line reference to constructor? 
+FTHandler::FTHandler(int f_pin, Stream *srl_port) { // add serial line reference to constructor? 
     frame_pin = f_pin;
     current_frame = 0;
     closed_loop = true;
     new_data = false;
     col = 0;
-    Srl = srl_port
+    Srl = srl_port;
+    
 }
         
-void FTHandler::init(uint8_t h_dac_addr, TwoWire *h_dac_wire, int i_dac_addr, TwoWire *i_dac_wire) {
+void FTHandler::init(uint8_t h_dac_addr, TwoWire *h_dac_wire, 
+                    int i_dac_addr, TwoWire *i_dac_wire) {
+    
+    
     heading_dac.begin(h_dac_addr, h_dac_wire);
     index_dac.begin(i_dac_addr, h_dac_wire);
 
@@ -23,15 +27,16 @@ void FTHandler::init(uint8_t h_dac_addr, TwoWire *h_dac_wire, int i_dac_addr, Tw
 }
 
 bool FTHandler::receive_srl_data() {
+    static int _col;
 
-    if (Srl.available() > 0) { // cannot use while(Serial.available()) because Teensy will read all 
-        curr_byte = Serial.read(); 
+    if (Srl->available() > 0) { // cannot use while(Serial.available()) because Teensy will read all 
+        curr_byte = Srl->read(); 
         if ((curr_byte == endline)|(curr_byte==delimiter)) { // end of frame or new column      
           _chars[buffer_ndx] = '\0'; // terminate the string
           buffer_ndx = 0; // restart buffer index
           
           if (curr_byte == endline) { // checks that columns are being counted correctly
-            new _col = col+1;
+            _col = col+1;
 
             if (_col != (num_cols)) {
               // print error to serial port 
@@ -43,22 +48,22 @@ bool FTHandler::receive_srl_data() {
 
         }
         else {
-          _chars[buffer_ndx] = current_bye;
-          buffer_index++;
-          if (buffer_index >= num_chars) {
-              buffer_index = num_chars - 1;
+          _chars[buffer_ndx] = curr_byte;
+          buffer_ndx++;
+          if (buffer_ndx >= num_chars) {
+              buffer_ndx = num_chars - 1;
           } 
           new_data = false;
         }
         new_data = false;
     }
-    return new_data
+    return new_data;
 }
 
-void FTHandler::update_col(bool new_data) {
-    if (new_data) {
+void FTHandler::update_col(bool nd) {
+    if (nd) {
         strcpy(chars, _chars);
-        FTHander::execute_col();
+        FTHandler::execute_col();
         col = (col+1) % num_cols;
     }
 }
@@ -81,17 +86,17 @@ void FTHandler::execute_col() {
       digitalWriteFast(frame_pin,LOW);
 
       // update heading pin
-      ft_heading = atof(_ft_chars) + PI;
+      ft_heading = atof(chars) + PI;
       
   }
 
 }
 
 void FTHandler::process_serial_data(){
-    FTHandler::update_col(FFHandler::receive_srl_data())
+    FTHandler::update_col(FTHandler::receive_srl_data());
 
     if (closed_loop) {
-        heading = fmod(ft_heading + ft_heading_offset, 2*PI);
+        heading = fmod(ft_heading + heading_offset, 2*PI);
     } 
 }
 
@@ -102,7 +107,7 @@ void FTHandler::update_dacs() {
         FTHandler::set_heading(delayed_heading_val);
     }
     if (index_on_delay & (curr_time>(index_delay_timestamp + index_delay))) {
-        FTHandler::set_index(delayed_index_val)
+        FTHandler::set_index(delayed_index_val);
     }
 
 
@@ -121,14 +126,14 @@ double FTHandler::get_heading() {
 }
 
 void FTHandler::set_heading_offset(double o) {
-    ft_heading_offset = o;
+    heading_offset = o;
 }
 
 void FTHandler::rotate_scene(double r) {
-    ft_heading_offset = fmod(ft_heading_offset + r, 2*PI);
+    heading_offset = fmod(heading_offset + r, 2*PI);
 }
 
-void FTHandler::get_index() {
+int FTHandler::get_index() {
     return index;
 }
 
