@@ -41,6 +41,17 @@ class FTHandler {
 
     int index;
 
+    bool heading_on_delay = false;
+    int heading_delay = 0;
+    int heading_delay_timestamp = 0;
+    double delayed_heading_val;
+
+    bool index_on_delay = true;
+    int index_delay = 0;
+    int index_delay_timestamp = 0;
+    int delayed_index_val;
+
+
     public:
         FTHandler(int f_pin);
         
@@ -59,5 +70,8 @@ class FTHandler {
 
         int get_index();
         void set_index();
+
+        void set_heading_on_delay();
+        void set_index_on_delay();
 }
 
