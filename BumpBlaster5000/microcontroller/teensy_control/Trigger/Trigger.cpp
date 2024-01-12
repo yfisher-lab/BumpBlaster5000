@@ -11,15 +11,15 @@ Trigger::Trigger(int id, int to) {
 void Trigger::init() {
     pinMode(pin_id, OUTPUT);
     digitalWriteFast(pin_id, LOW);
-    _state = false;
-    _timestamp = millis();
+    state = false;
+    timestamp = millis();
 
 }
 
 void Trigger::trigger() {
     digitalWriteFast(pin_id, HIGH);
-    _state = true;
-    _timestamp = millis();
+    state = true;
+    timestamp = millis();
 }
 
 void Trigger::trigger_on_delay(int t) {
@@ -29,7 +29,7 @@ void Trigger::trigger_on_delay(int t) {
 }
 
 void Trigger::check(int curr) {
-    if (_state & (curr-_timestamp)>timeout) {
+    if (state & ((curr-timestamp)>timeout)) {
         digitalWriteFast(pin_id, LOW);
         state = false;
     }
@@ -40,11 +40,11 @@ void Trigger::check(int curr) {
 }
 
 bool Trigger::pin_state() {
-    return _state;
+    return state;
 }
 
 int Trigger::get_timestamp() {
-    return _timestamp;
+    return timestamp;
 }
 
   

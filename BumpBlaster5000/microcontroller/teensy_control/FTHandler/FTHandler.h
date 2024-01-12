@@ -17,7 +17,7 @@ class FTHandler {
     const int max_dac_val = 4095;
     const int num_cols = 26;
 
-    int frame_pin
+    int frame_pin;
 
     bool closed_loop;
 
@@ -28,14 +28,14 @@ class FTHandler {
     bool new_data;
 
     int buffer_ndx = 0;
-    static char delimeter = ',';
-    static char endline = '\n'
+    char delimiter = ',';
+    char endline = '\n';
     char curr_byte;
     
     int current_frame;
     
     double ft_heading;
-    double ft_heading_offset;
+    double heading_offset;
     
     double heading;
 
@@ -51,28 +51,35 @@ class FTHandler {
     int index_delay_timestamp = 0;
     int delayed_index_val;
 
+    int curr_time;
+
+    Stream *Srl;
+
 
     public:
-        FTHandler(int f_pin);
+        FTHandler(int f_pin, Stream *srl_port);
         
-        void init(uint8_t h_dac_addr, TwoWire *h_dac_wire, int i_dac_addr, TwoWire *i_dac_wire);
+        void init(uint8_t h_dac_addr, 
+                  TwoWire *h_dac_wire, int i_dac_addr, 
+                  TwoWire *i_dac_wire);
 
-        void receive_srl_data();
-        void update_col();
+        bool receive_srl_data();
+        void process_serial_data();
+        void update_col(bool nd);
         
         void update_dacs();
         void execute_col();
 
-        int get_heading();
-        void set_heading();
-        void set_heading_offset();
-        void rotate_scene();
+        double get_heading();
+        void set_heading(double h);
+        void set_heading_offset(double o);
+        void rotate_scene(double r);
 
         int get_index();
-        void set_index();
+        void set_index(int i);
 
         void set_heading_on_delay(int t, double h);
         void set_index_on_delay(int t, int i);
-}
+};
 
 #endif
