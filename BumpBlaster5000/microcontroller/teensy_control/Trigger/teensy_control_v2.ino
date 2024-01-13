@@ -7,7 +7,7 @@
 
 // const int state_num_vals = 2;
 const byte ft_frame_pin = 2; 
-FTHandler ft_handler(ft_frame_pin, &Serial);
+//FTHandler ft_handler(ft_frame_pin, &Serial);
 
 
 
