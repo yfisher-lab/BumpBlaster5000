@@ -63,9 +63,9 @@ class FTHandler {
                   TwoWire *h_dac_wire, int i_dac_addr, 
                   TwoWire *i_dac_wire);
 
-        bool receive_srl_data();
+        void receive_srl_data();
         void process_serial_data();
-        void update_col(bool nd);
+        void update_col();
         
         void update_dacs();
         void execute_col();

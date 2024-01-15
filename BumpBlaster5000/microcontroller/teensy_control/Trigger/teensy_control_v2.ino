@@ -14,7 +14,7 @@ const byte ft_frame_pin = 2;
 //Bruker Triggers
 struct {
     Trigger trig(3,10);
-    bool is_scanning;
+    static bool is_scanning;
 } bk_scan_trig;
 bk_scan_trig.is_scanning = false;
 
@@ -100,28 +100,28 @@ void execute_state() {
       break;
 
     case 6: // set heading_dac value
-      ft_handler.set_heading(state_serial_handler.cmd_arr[0]);
+      set_heading(cmd_arr[0];)
       break;
 
     case 7: // set index_dac value 
-      ft_handler.set_index(state_serial_handler.cmd_arr[0]);
+      set_index(cmd_arr[0]);
       break;
 
     case 8: // set heading and index dac
-      ft_handler.set_heading(state_serial_handler.cmd_arr[0]);
-      ft_handler.set_index(state_serial_handler.cmd_arr[1]);
+      set_heading(cmd_arr[0]);
+      set_index(cmd_arr[1]);
       break;
 
     case 9: // set heading and index dac, trigger opto with specified delay
-      vis_opto_point_runner.start_points();
+      start_vis_opto_points();
       break;
 
     case 10: // run list of points
-      vis_opto_point_runner.start_points();
+      start_vis_opto_points();
       break;
 
     case 11: // kill list of points
-      vis_opto_point_runner.abort_points()
+      abort_vis_opto_points();
       break;
 
     case 12: // trig pump
@@ -159,7 +159,7 @@ void check_timers() {
   
 
   // deal with multiple points
-  vis_opto_point_runner.check_for_next_point(curr_timestamp);
+  check_for_next_vis_opto_point(curr_timestamp);
 }
 
 

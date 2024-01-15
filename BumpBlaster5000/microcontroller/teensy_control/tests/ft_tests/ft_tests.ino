@@ -18,7 +18,7 @@ FASTRUN void loop() {
   // put your main code here, to run repeatedly:
   ft_handler.process_serial_data();
   ft_handler.update_dacs();
-  curr_time = millis();
+  // curr_time = millis();
 //  if ((curr_time-high_time)>1000) {
 //
 ////    ft_handler.rotate_scene(PI/8);

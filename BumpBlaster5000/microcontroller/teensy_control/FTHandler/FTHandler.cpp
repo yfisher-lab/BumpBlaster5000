@@ -26,13 +26,13 @@ void FTHandler::init(uint8_t h_dac_addr, TwoWire *h_dac_wire,
 
 }
 
-bool FTHandler::receive_srl_data() {
+void FTHandler::receive_srl_data() {
     static int _col;
 
     if (Srl->available() > 0) { // cannot use while(Serial.available()) because Teensy will read all 
         curr_byte = Srl->read(); 
         if ((curr_byte == endline)|(curr_byte==delimiter)) { // end of frame or new column      
-          _chars[buffer_ndx] = '\0'; // terminate the string
+          chars[buffer_ndx] = '\0'; // terminate the string
           buffer_ndx = 0; // restart buffer index
           
           if (curr_byte == endline) { // checks that columns are being counted correctly
@@ -48,7 +48,7 @@ bool FTHandler::receive_srl_data() {
 
         }
         else {
-          _chars[buffer_ndx] = curr_byte;
+          chars[buffer_ndx] = curr_byte;
           buffer_ndx++;
           if (buffer_ndx >= num_chars) {
               buffer_ndx = num_chars - 1;
@@ -57,12 +57,10 @@ bool FTHandler::receive_srl_data() {
         }
         new_data = false;
     }
-    return new_data;
 }
 
-void FTHandler::update_col(bool nd) {
-    if (nd) {
-        strcpy(chars, _chars);
+void FTHandler::update_col() {
+    if (new_data) {
         FTHandler::execute_col();
         col = (col+1) % num_cols;
     }
@@ -93,7 +91,8 @@ void FTHandler::execute_col() {
 }
 
 void FTHandler::process_serial_data(){
-    FTHandler::update_col(FTHandler::receive_srl_data());
+    FTHandler::receive_srl_data();
+    FTHandler::update_col();
 
     if (closed_loop) {
         heading = fmod(ft_heading + heading_offset, 2*PI);
