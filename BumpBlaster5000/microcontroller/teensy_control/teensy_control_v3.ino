@@ -7,6 +7,34 @@
 
 #define BKSERIAL Serial6 // update to current pin settings
 
+void setup() {
+  // put your setup code here, to run once:
+
+  // FicTrac setup
+  pinMode(ft::frame_pin,OUTPUT);
+  digitalWrite(ft::frame_pin,LOW);
+  
+
+  // start DACs
+  ft::heading_dac.begin(0x62,&Wire1);
+  ft::index_dac.begin(0x63, &Wire1);
+
+
+  BKSERIAL.begin(115200);
+}
+
+
+void yield() {} // get rid of hidden arduino yield function
+
+FASTRUN void loop() { // FASTRUN teensy keyword
+    state_ns::state_machine();
+    execute_state();
+    ft::process_serial_data();
+    ft::update_dacs();
+    check_pins();
+}
+
+
 //Bruker Triggers
 struct {
     Trigger trig(3,10);
@@ -578,31 +606,6 @@ void check_pins() {
 
 
 
-void setup() {
-  // put your setup code here, to run once:
-
-  // FicTrac setup
-  pinMode(ft::frame_pin,OUTPUT);
-  digitalWrite(ft::frame_pin,LOW);
-  
-
-  // start DACs
-  ft::heading_dac.begin(0x62,&Wire1);
-  ft::index_dac.begin(0x63, &Wire1);
-
-
-  BKSERIAL.begin(115200);
-}
-
-
-void yield() {} // get rid of hidden arduino yield function
-
-FASTRUN void loop() { // FASTRUN teensy keyword
-    state_machine();
-    ft_state();
-    check_pins();
-    // check_pins();
-}
 
 
 
