@@ -1,15 +1,13 @@
 #include "Trigger.h"
 
-Trigger bk_trig;
-struct _scan {
-    Trigger trig;
-    bool is_scanning;
-};
-_scan bk_scan{bk_trig, false};
+struct {
+    Trigger trig; 
+    static bool is_scanning;
+} bk_scan;
+bk_scan.is_scanning = false;
 
-
-Trigger bk_opto_trig;
-Trigger pump_trig;
+Trigger bk_opto_trig; 
+Trigger pump_trig; 
 
 int curr_time;
 int last_flip;
@@ -18,11 +16,11 @@ void setup() {
   // put your setup code here, to run once:
   
   // Bruker setup
-  bk_scan.trig.init(3, 10);
-  bk_opto_trig.init(4,10);
+  bk_scan.trig.init(3, 10, false);
+  bk_opto_trig.init(4, 10, false);
   
   // Pump trigger setup
-  pump_trig.init(5, 10);
+  pump_trig.init(5, 10, true);
 
 //  last_flip = millis();
 }
@@ -39,7 +37,7 @@ FASTRUN void loop() {
     bk_scan.trig.trigger_on_delay(100);
     bk_opto_trig.trigger_on_delay(200);
     last_flip = millis();
-    Serial.println(pump_trig.get_timestamp());
+    // Serial.println(pump_trig.get_timestamp());
   }
 
   pump_trig.check(curr_time);

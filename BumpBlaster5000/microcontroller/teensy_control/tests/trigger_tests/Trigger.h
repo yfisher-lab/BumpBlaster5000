@@ -4,7 +4,7 @@
 #include "Arduino.h"
 
 class Trigger {
-    int pin_id;
+    static int pin_id;
     bool state;
     int timestamp;
     int timeout; 
@@ -15,7 +15,7 @@ class Trigger {
 
     public:
         Trigger();
-        void init(int id, int to);
+        void init(int id, int to, bool invert);
         void trigger();
         void trigger_on_delay(int t);
         void check(int curr);

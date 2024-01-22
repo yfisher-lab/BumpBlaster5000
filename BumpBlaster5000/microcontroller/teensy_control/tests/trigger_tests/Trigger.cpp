@@ -7,18 +7,29 @@ Trigger::Trigger() {
 
 
 
-void Trigger::init(int id, int to) {
+void Trigger::init(int id, int to, bool invert) {
     pin_id = id;
     timeout = to;
+    inverted = intert;
     pinMode(pin_id, OUTPUT);
-    digitalWriteFast(pin_id, LOW);
+    if (inverted) {
+        digitalWriteFast(pin_id, HIGH);
+    } else {
+        digitalWriteFast(pin_id, LOW);
+    }
+    
     state = false;
     timestamp = millis();
 
 }
 
 void Trigger::trigger() {
-    digitalWriteFast(pin_id, HIGH);
+    if (inverted) {
+        digitalWriteFast(pin_id, LOW);
+    } else {
+        digitalWriteFast(pin_id, HIGH);
+    }
+    
     state = true;
     timestamp = millis();
 }
@@ -31,7 +42,12 @@ void Trigger::trigger_on_delay(int t) {
 
 void Trigger::check(int curr) {
     if (state & ((curr-timestamp)>timeout)) {
-        digitalWriteFast(pin_id, LOW);
+        if (inverted) {
+            digitalWriteFast(pin_id, HIGH);
+        } else {
+            digitalWriteFast(pin_id, LOW);
+        }
+        
         state = false;
     }
 
