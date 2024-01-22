@@ -10,7 +10,7 @@ Trigger::Trigger() {
 void Trigger::init(int id, int to, bool invert) {
     pin_id = id;
     timeout = to;
-    inverted = intert;
+    inverted = invert;
     pinMode(pin_id, OUTPUT);
     if (inverted) {
         digitalWriteFast(pin_id, HIGH);
