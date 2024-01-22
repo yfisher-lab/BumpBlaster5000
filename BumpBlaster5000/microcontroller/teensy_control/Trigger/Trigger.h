@@ -15,7 +15,7 @@ class Trigger {
 
     public:
         Trigger();
-        void init(int id, int to);
+        void init(int id, int to, bool invert);
         void trigger();
         void trigger_on_delay(int t);
         void check(int curr);
