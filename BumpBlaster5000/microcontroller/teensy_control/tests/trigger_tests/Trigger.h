@@ -4,10 +4,11 @@
 #include "Arduino.h"
 
 class Trigger {
-    static int pin_id;
+    int pin_id;
     bool state;
     int timestamp;
     int timeout; 
+    bool inverted;
     
     int delay_timer;
     bool on_delay=false;
