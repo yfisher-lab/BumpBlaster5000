@@ -1,6 +1,6 @@
 // State reading variables
 #include <cstring>
-#include "Trigger/Trigger.h"
+#include "Trigger.h"
 #include "FTHandler.H"
 #include <Wire.h>
 #include <Adafruit_MCP4725.h>
@@ -12,13 +12,13 @@
 //Bruker Triggers
 struct {
     Trigger trig;
-    static bool is_scanning;
+    bool is_scanning;
 } bk_scan;
 
-Trigger bk_opto_trig;
+Trigger opto_trig;
 Trigger pump_trig;
 
-const int num_chars = 256;
+
 
 static int curr_time = 0;
 
@@ -28,8 +28,9 @@ namespace state_ns {
     static int cmd_index = 0;
     int val_arr[1024]; // 204 points can be initialized
 
-    static cmd = 0;
+    static int cmd = 0;
     static int cmd_len = -1000;
+    static bool new_cmd = false;
 
     static int data_rcvd_timestamp;
 
@@ -42,15 +43,15 @@ namespace state_ns {
         
 
         if (SerialUSB1.available() > 0){
-            timestamp = millis();
+            data_rcvd_timestamp = millis();
             curr_byte = SerialUSB1.read();
-            if ((rc == endline) | (rc==delimiter)) { // end of frame or new column
+            if ((curr_byte == endline) | (curr_byte==delimiter)) { // end of frame or new column
                 chars[ndx] = '\0'; // terminate string
                 ndx = 0;
                 new_state = true;
             } 
             else {
-                chars[ndx] = rc;
+                chars[ndx] = curr_byte;
                 ndx++;
                 if (ndx >= num_chars) {
                     ndx = num_chars - 1;
@@ -61,8 +62,8 @@ namespace state_ns {
 
     void state_machine() {
         static int msg_timeout = 1000;
-        static int begin_msg_timestap = -1; 
-        static int curr_msg_timestamp;
+        static int begin_msg_timestamp = -1; 
+//        static int curr_msg_timestamp;
 
   
   
@@ -82,8 +83,9 @@ namespace state_ns {
             cmd_index +=1; // update index
             if ((cmd_index-2) == cmd_len) { // if reached end of state machine message
                 begin_msg_timestamp=-1;
-                execute_state(cmd, cmd_len);
+//                execute_state(cmd, cmd_len);
                 cmd_index = 0;
+                new_cmd=true;
             }
             new_state = false;
         }
@@ -94,6 +96,7 @@ namespace state_ns {
             cmd = 5; // return to closed loop
             cmd_len = 0;
             begin_msg_timestamp = -1;
+            new_cmd=true;
         }        
     }
 }
@@ -104,7 +107,7 @@ void setup() {
   bk_scan.is_scanning = false;
   bk_scan.trig.init(3, 10, false);
 
-  bk_opto_trig.init(4, 10, false);
+  opto_trig.init(4, 10, false);
   
   // Pump trigger setup
   pump_trig.init(5, 500, true);
@@ -130,7 +133,10 @@ void yield() {} // get rid of hidden arduino yield function
 
 FASTRUN void loop() { // FASTRUN teensy keyword
     state_ns::state_machine();
-    execute_state();
+    if (state_ns::new_cmd) {
+      execute_state();
+    }
+//    execute_state();
     ft::process_serial_data();
     ft::update_dacs();
     check_pins();
@@ -142,7 +148,7 @@ FASTRUN void loop() { // FASTRUN teensy keyword
 
 namespace vis_opto_ns {
 
-    static bool on_multi_point = false;
+//    static bool on_multi_point = false;
     static int n_points;
     static int curr_point = 0; 
     static int next_point_time;
@@ -156,33 +162,20 @@ namespace vis_opto_ns {
 
     static int point_start_time = -1;
 
-    void start_points() {
-        n_points = state_ns::cmd_len/pnt_len;
-        pts_complete = false;
-
-        if (n_points==0) {
-            pts_complete = true;
-        }
-        point_start_time = millis();
-        curr_point = 0;
-        if (!pts_complete){
-            run_point();  
-        }
-    }
-
     void run_point() {
-        const int _h;
-        const int _i;
-        const int _opto_bool;
-        const int _opto_delay;
+        static int _h;
+        static int _i;
+        static int _opto_bool;
+        static int _opto_delay;
+//        static int next_point_millis;
         
         start_ind = curr_point*pnt_len;
         _h = state_ns::val_arr[start_ind];
         _i = state_ns::val_arr[start_ind + 1];
         _opto_bool = state_ns::val_arr[start_ind + 2];
-        _opto_del = state_ns::val_arr[start_ind + 3];
+        _opto_delay = state_ns::val_arr[start_ind + 3];
 
-        next_point_millis = state_ns::val_arr[start_ind + 4];
+        next_point_time = state_ns::val_arr[start_ind + 4];
 
         if (_opto_delay>=0) {
             ft::set_heading(_h);
@@ -199,10 +192,26 @@ namespace vis_opto_ns {
                 opto_trig.trigger();
             }
             
-            ft::set_heading_on_delay(_-1*_opto_delay);
-            ft::set_index_on_delay(-1*_opto_delay);
+            ft::set_heading_on_delay(-1*_opto_delay, _h);
+            ft::set_index_on_delay(-1*_opto_delay, _i);
         }
     }
+
+    void start_points() {
+        n_points = state_ns::cmd_len/pnt_len;
+        pts_complete = false;
+
+        if (n_points==0) {
+            pts_complete = true;
+        }
+        point_start_time = millis();
+        curr_point = 0;
+        if (!pts_complete){
+            run_point();  
+        }
+    }
+
+    
     
     
     void check_for_next_point() {
@@ -228,7 +237,7 @@ namespace vis_opto_ns {
 
 namespace pump_opto_ns {
 
-    static bool on_multi_point = false;
+//    static bool on_multi_point = false;
     static int n_points;
     static int curr_point = 0; 
     static int next_point_time;
@@ -242,33 +251,20 @@ namespace pump_opto_ns {
 
     static int point_start_time = -1;
 
-    void start_points() {
-        n_points = state_ns::cmd_len/pnt_len;
-        pts_complete = false;
-
-        if (n_points==0) {
-            pts_complete = true;
-        }
-        point_start_time = millis();
-        curr_point = 0;
-        if (!pts_complete){
-            run_point();  
-        }
-    }
-
     void run_point() {
-        const int _h;
-        const int _i;
-        const int _opto_bool;
-        const int _opto_delay;
+//        static int _h;
+//        static int _i;
+        static int _opto_bool;
+        static int _opto_delay;
+//        static int next_point_millis;
         
         start_ind = curr_point*pnt_len;
-        _h = state_ns::val_arr[start_ind];
-        _i = state_ns::val_arr[start_ind + 1];
+//        _h = state_ns::val_arr[start_ind];
+//        _i = state_ns::val_arr[start_ind + 1];
         _opto_bool = state_ns::val_arr[start_ind + 2];
-        _opto_del = state_ns::val_arr[start_ind + 3];
+        _opto_delay = state_ns::val_arr[start_ind + 3];
 
-        next_point_millis = state_ns::val_arr[start_ind + 4];
+        next_point_time = state_ns::val_arr[start_ind + 4];
 
         if (_opto_delay>=0) {
             trig_pump();
@@ -287,6 +283,21 @@ namespace pump_opto_ns {
         }
     }
     
+    void start_points() {
+        n_points = state_ns::cmd_len/pnt_len;
+        pts_complete = false;
+
+        if (n_points==0) {
+            pts_complete = true;
+        }
+        point_start_time = millis();
+        curr_point = 0;
+        if (!pts_complete){
+            run_point();  
+        }
+    }
+
+   
     
     void check_for_next_point() {
         if (!pts_complete) {
@@ -353,7 +364,7 @@ void execute_state() {
         break;
 
     case 6: // set heading_dac value
-        ft::set_heading(state_ns::val_arr[0], false);
+        ft::set_heading(state_ns::val_arr[0]);
         break;
 
     case 7: // set index_dac value
@@ -392,7 +403,7 @@ void execute_state() {
 
 
 void trig_opto() {
-  bk_opto_trig.trigger();
+  opto_trig.trigger();
 
   SerialUSB2.print("opto, "); // opto trigger rising edge Fictrac frame
   SerialUSB2.print(ft::current_frame);
@@ -412,7 +423,7 @@ void check_pins() {
   
   // flip start down
   curr_time = millis();
-  if (bk_scan.trig.state & ((curr_time - bk_scan.trig.timestamp) > bk_scan.trig.timeout)) {
+  if (bk_scan.trig.pin_state() & ((curr_time - bk_scan.trig.get_timestamp()) > bk_scan.trig.get_timeout())) {
     if (bk_scan.is_scanning) { // if this is a start scan trigger
       SerialUSB2.print("start_trig_falling_edge, "); // start trigger falling edge Fictrac frame
       SerialUSB2.print(ft::current_frame);
@@ -423,7 +434,7 @@ void check_pins() {
   }
 
   // flip opto trigger down
-  bk_opto_trig.check(curr_time);
+  opto_trig.check(curr_time);
 
   // flip opto trigger down
   pump_trig.check(curr_time);
