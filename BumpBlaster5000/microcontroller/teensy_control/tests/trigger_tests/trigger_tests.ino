@@ -21,7 +21,7 @@ void setup() {
   bk_opto_trig.init(4, 10, false);
   
   // Pump trigger setup
-  pump_trig.init(5, 10, true);
+  pump_trig.init(5, 500, true);
 
 //  last_flip = millis();
 }
@@ -32,7 +32,7 @@ FASTRUN void loop() {
   // put your main code here, to run repeatedly:
 
   curr_time = millis();
-  if ((curr_time-last_flip)>1000) {
+  if ((curr_time-last_flip)>2000) {
 
     pump_trig.trigger();
     bk_scan.trig.trigger_on_delay(100);
