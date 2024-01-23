@@ -11,7 +11,7 @@
 
 //Bruker Triggers
 struct {
-    Trigger trig(3,10);
+    Trigger trig;
     static bool is_scanning;
 } bk_scan;
 
@@ -20,43 +20,7 @@ Trigger pump_trig;
 
 const int num_chars = 256;
 
-void setup() {
-  // put your setup code here, to run once:
-
-  bk_scan.is_scanning = false;
-  bk_scan.trig.init(3, 10, false);
-
-  bk_opto_trig.init(4, 10, false);
-  
-  // Pump trigger setup
-  pump_trig.init(5, 500, true);
-  
-
-
-
-  // FicTrac setup
-  pinMode(ft::frame_pin,OUTPUT);
-  digitalWrite(ft::frame_pin,LOW);
-  
-
-  // start DACs
-  ft::heading_dac.begin(0x62,&Wire1);
-  ft::index_dac.begin(0x63, &Wire1);
-
-
-  BKSERIAL.begin(115200);
-}
-
-
-void yield() {} // get rid of hidden arduino yield function
-
-FASTRUN void loop() { // FASTRUN teensy keyword
-    state_ns::state_machine();
-    execute_state();
-    ft::process_serial_data();
-    ft::update_dacs();
-    check_pins();
-}
+static int curr_time = 0;
 
 namespace state_ns {
     static char chars[num_chars];
@@ -108,7 +72,7 @@ namespace state_ns {
                 cmd_len = atoi(chars);
                 begin_msg_timestamp = millis();
             } 
-            else if (index == 1) { // second value is the state to go to in state machine
+            else if (cmd_index == 1) { // second value is the state to go to in state machine
                 cmd = atoi(chars);
             }
             else { // the remaining value are parameters specific to the state
@@ -133,6 +97,46 @@ namespace state_ns {
         }        
     }
 }
+
+void setup() {
+  // put your setup code here, to run once:
+
+  bk_scan.is_scanning = false;
+  bk_scan.trig.init(3, 10, false);
+
+  bk_opto_trig.init(4, 10, false);
+  
+  // Pump trigger setup
+  pump_trig.init(5, 500, true);
+  
+
+
+
+  // FicTrac setup
+  pinMode(ft::frame_pin,OUTPUT);
+  digitalWrite(ft::frame_pin,LOW);
+  
+
+  // start DACs
+  ft::heading_dac.begin(0x62,&Wire1);
+  ft::index_dac.begin(0x63, &Wire1);
+
+
+  BKSERIAL.begin(115200);
+}
+
+
+void yield() {} // get rid of hidden arduino yield function
+
+FASTRUN void loop() { // FASTRUN teensy keyword
+    state_ns::state_machine();
+    execute_state();
+    ft::process_serial_data();
+    ft::update_dacs();
+    check_pins();
+}
+
+
 
 
 
@@ -202,7 +206,6 @@ namespace vis_opto_ns {
     
     
     void check_for_next_point() {
-        static int curr_time;
         if (!pts_complete) {
             if (curr_time>(curr_point_time+next_point_time)) {
                 curr_point++;
@@ -280,12 +283,12 @@ namespace pump_opto_ns {
                 opto_trig.trigger();
             }
             
-            pump_trig::trigger_on_delay(-1*_opto_delay);
+            pump_trig.trigger_on_delay(-1*_opto_delay);
         }
     }
     
     
-    void check_for_next_point(int curr_time) {
+    void check_for_next_point() {
         if (!pts_complete) {
             if (curr_time>(curr_point_time+next_point_time)) {
                 curr_point++;
@@ -350,16 +353,16 @@ void execute_state() {
         break;
 
     case 6: // set heading_dac value
-        ft::set_heading(ft::val_arr[0], false);
+        ft::set_heading(state_ns::val_arr[0], false);
         break;
 
     case 7: // set index_dac value
-        ft::set_index(ft::val_arr[0]); 
+        ft::set_index(state_ns::val_arr[0]); 
         break;
 
     case 8: // set heading and index dac
-        ft::set_heading(val_arr[0]);
-        ft::set_index(val_arr[1]);
+        ft::set_heading(state_ns::val_arr[0]);
+        ft::set_index(state_ns::val_arr[1]);
         break;
 
     case 9: // set heading and index dac, trigger opto with specified delay
@@ -389,11 +392,7 @@ void execute_state() {
 
 
 void trig_opto() {
-
-  digitalWriteFast(bk_opto_trig_pin, HIGH);
-  bk_opto_trig_state = true;
-  bk_opto_trig_timestamp = millis();
-
+  bk_opto_trig.trigger();
 
   SerialUSB2.print("opto, "); // opto trigger rising edge Fictrac frame
   SerialUSB2.print(ft::current_frame);
@@ -401,10 +400,7 @@ void trig_opto() {
 }
 
 void trig_pump() {
-
-  digitalWriteFast(pump_trig_pin, HIGH);
-  pump_trig_state = true;
-  pump_trig_timestamp = millis();
+  pump_trig.trigger();
 
   SerialUSB2.print("pump, ");
   SerialUSB2.print(ft::current_frame);
@@ -415,27 +411,27 @@ void trig_pump() {
 void check_pins() {
   
   // flip start down
-  int curr_timestamp = millis();
-  if (bk_scan.trig.state & ((curr_timestamp - bk_scan.trig.timestamp) > bk_scan.trig.timeout)) {
+  curr_time = millis();
+  if (bk_scan.trig.state & ((curr_time - bk_scan.trig.timestamp) > bk_scan.trig.timeout)) {
     if (bk_scan.is_scanning) { // if this is a start scan trigger
       SerialUSB2.print("start_trig_falling_edge, "); // start trigger falling edge Fictrac frame
       SerialUSB2.print(ft::current_frame);
       SerialUSB2.print('\n');
     }
     
-    bk_scan.trig.check(curr_timestamp);
+    bk_scan.trig.check(curr_time);
   }
 
   // flip opto trigger down
-  bk_opto_trig.check(curr_timestamp);
+  bk_opto_trig.check(curr_time);
 
   // flip opto trigger down
-  pump_trig.check(curr_timestamp);
+  pump_trig.check(curr_time);
   
 
   // flip opto up after specified delay
-  vis_opto_ns::check_for_next_point(curr_timestamp);
-  pump_opto_ns::check_for_next_point(curr_timestamp);
+  vis_opto_ns::check_for_next_point();
+  pump_opto_ns::check_for_next_point();
 
 }
 
