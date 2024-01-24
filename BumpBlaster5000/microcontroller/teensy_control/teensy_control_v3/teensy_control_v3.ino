@@ -42,6 +42,8 @@ FASTRUN void loop() { // FASTRUN teensy keyword
 
   ft.process_srl_data();
   ft.update_dacs();
+
+  
 //    state_ns::state_machine();
 //    if (state_ns::new_cmd) {
 //      execute_state();
