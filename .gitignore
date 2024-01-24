@@ -133,3 +133,5 @@ scratch/scratch.txt
 scratch/*
 .gitignore
 
+.vscode/settings.json
+.gitignore
