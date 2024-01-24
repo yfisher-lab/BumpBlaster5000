@@ -10,9 +10,72 @@
 using namespace std;
 
 
-const int num_chars = 256;
+
+struct dac_countdown {
+    bool on_delay = true;
+    int delay;
+    int timestamp;
+    double val;
+}
+
+class FTHandler {
+    bool closed_loop = true;
+    char chars[num_chars]; 
+    bool new_data = false;
+    
+    double heading;
+    bool new_heading;
+    dac_countdown heading_countdown;
+    double ft_heading;
+    int index;
+    bool new_index;
+    dac_countdown index_countdown;
+
+    double heading_offset=0;
+
+    int current_frame = 0;
+    int frame_pin = 2; 
+
+    static int max_dac_val = 4095;
+    static int num_cols = 26; 
+
+    int col;
+    int curr_time;
+
+    Adafruit_MCP4725 heading_dac;
+    Adafruit_MCP4725 index_dac;
+
+    void init();
+    void recv_data();
+    void update_col();
+    void execute_col();
+
+    public: 
+        void FTHandler();
+        
+        void process_srl_data();
+        void update_dacs();
+
+        void set_heading(int h);
+
+        void set_index(int i);
+
+        void set_heading_offset(double o);
+
+        void rotate_scene(double r);
+        int get_index(); 
+
+        void set_heading_on_delay(int t, double h);
+
+        void set_index_on_delay(int t, int i );
+
+
+}
 
 namespace ft {
+
+
+
     static bool closed_loop = true;
     static char chars[num_chars]; 
     static bool new_data = false;
@@ -49,6 +112,7 @@ namespace ft {
             static int delay = 100;
             static int timestamp;
             static double index;
+            
         }
     }
 
