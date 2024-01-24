@@ -22,7 +22,7 @@ struct dac_countdown {
 };
 
 class FTHandler {
-    bool closed_loop = true;
+    
     char chars[num_chars]; 
     bool new_data = false;
 
@@ -38,7 +38,7 @@ class FTHandler {
 
     double heading_offset=0;
 
-    int current_frame = 0;
+    
     int frame_pin;
 
     int max_dac_val = 4095;
@@ -58,6 +58,10 @@ class FTHandler {
     void execute_col();
 
     public: 
+
+        int current_frame = 0;
+        bool closed_loop = true;
+        
         FTHandler(Stream& srl_ref);
         void init(int f_pin, TwoWire* w1, uint8_t addr1, TwoWire* w2, 
                     uint8_t addr2);

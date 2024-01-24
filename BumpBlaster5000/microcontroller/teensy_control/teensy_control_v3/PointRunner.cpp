@@ -14,7 +14,7 @@ void VisOptoPointRunner::run_point() {
     static int _opto_bool;
     static int _opto_delay;
 
-    
+    curr_point_time = millis();
     start_ind = curr_point*pnt_len;
     _h = ss.val_arr[start_ind];
     _i = ss.val_arr[start_ind + 1];
@@ -92,12 +92,14 @@ void PumpOptoPointRunner::run_point() {
     static int _opto_bool;
     static int _opto_delay;
 
+    curr_point_time=millis();
+
     start_ind = curr_point*pnt_len;
    
-    _opto_bool = state_ns::val_arr[start_ind + 2];
-    _opto_delay = state_ns::val_arr[start_ind + 3];
+    _opto_bool = ss.val_arr[start_ind + 2];
+    _opto_delay = ss.val_arr[start_ind + 3];
 
-    next_point_time = state_ns::val_arr[start_ind + 4];
+    next_point_time = ss.val_arr[start_ind + 4];
 
     if (_opto_delay>=0) {
         pump_trig.trigger();
@@ -118,7 +120,7 @@ void PumpOptoPointRunner::run_point() {
 
 
 void PumpOptoPointRunner::start_points() {
-    n_points = state_ns::cmd_len/pnt_len;
+    n_points = ss.cmd_len/pnt_len;
        pts_complete = false;
 
        if (n_points==0) {
@@ -144,4 +146,3 @@ void PumpOptoPointRunner::check_for_next_point(int curr_time) {
         }
     }
 }
-

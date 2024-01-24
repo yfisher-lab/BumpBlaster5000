@@ -46,8 +46,10 @@ void yield() {} // get rid of hidden arduino yield function
 FASTRUN void loop() { // FASTRUN teensy keyword
 
     ss.read_state();
-    if ss.new_cmd {
+    if (ss.new_cmd) {
+        // SerialUSB2.println(ss.cmd);
         execute_state();
+        ss.new_cmd=false;
     }
 
     ft.process_srl_data();
@@ -114,7 +116,7 @@ void execute_state() {
             break;
 
         case 9: // set heading and index dac, trigger opto with specified delay
-            // heading, index, opto_bool, opto_delay
+            // heading, index, opto_bool, opto_delay, 0
             vis_opto_pr.start_points();
             break;
 
@@ -141,14 +143,15 @@ void execute_state() {
             break;
 
         case 15: // rotate scene by set amount in radians
-            ft.rotate_scene(ss.val_arr[0])
+            ft.rotate_scene(ss.val_arr[0]);
             break;
-        }
+   }
 }
 
 
 
 void check_pins() {
+    static int curr_time=0;
  
  
     curr_time = millis();
