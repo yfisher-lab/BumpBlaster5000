@@ -1,20 +1,25 @@
 #include "Arduino.h"
 #include "FTHandler.h"
 
-void FTHandler::FTHandler(Stream& srl_ref) {
+FTHandler::FTHandler(Stream& srl_ref): srl(srl_ref) {
 
-    srl = srl_ref;
+//    srl = srl_ref;
     
     }
 
-void FTHandler::init(int f_pin, Wire& w1, int addr1, Wire& w2, 
-                    int addr2) {
+void FTHandler::init(int f_pin, TwoWire* w1, uint8_t addr1, TwoWire* w2, 
+                    uint8_t addr2) {
     // initialize frame pin
     frame_pin = f_pin;
 
+    pinMode(frame_pin,OUTPUT);
+    digitalWriteFast(frame_pin,LOW);
+
+    h_addr = addr1;
+    i_addr = addr2;
     // initialize dacs
-    heading_dac.begin(addr1, w1);
-    index_dac.begin(addr2, w2);    
+    heading_dac.begin(h_addr, w1);
+    index_dac.begin(i_addr, w2);    
     
 }
 
@@ -81,13 +86,13 @@ void FTHandler::recv_data() { // receive Fictrac data
     void FTHandler::execute_col() {
         FTHandler::recv_data(); 
         if (new_data == true) {
-            ft::update_col();
+            FTHandler::update_col();
             col = (col+1) % num_cols; // keep track of columns in fictrack  
             new_data = false;
         }
     }
     
-    void FTHandler::process_serial_data(){
+    void FTHandler::process_srl_data(){
         FTHandler::execute_col();
         if (closed_loop) {
             heading = fmod(ft_heading + heading_offset, 2*PI);
@@ -99,7 +104,7 @@ void FTHandler::recv_data() { // receive Fictrac data
         curr_time = millis();
         if (heading_countdown.on_delay ) {
             if (curr_time > (heading_countdown.timestamp + heading_countdown.delay)) {
-                heading = heading_countdown.heading;
+                heading = heading_countdown.val;
                 heading_countdown.on_delay = false;
                 new_heading = true;
             }
@@ -107,8 +112,8 @@ void FTHandler::recv_data() { // receive Fictrac data
 //
         if (index_countdown.on_delay) {
             if (curr_time > (index_countdown.timestamp + index_countdown.delay)) {
-                index = dac_countdown::index::index;
-                dac_countdown::index::on_delay = false;
+                index = index_countdown.val;
+                index_countdown.on_delay = false;
                 new_index = true;
             }
         }
@@ -148,15 +153,15 @@ void FTHandler::recv_data() { // receive Fictrac data
     }
 
     void FTHandler::set_heading_on_delay(int t, double h){
-        dac_countdown::heading::on_delay = true;
-        dac_countdown::heading::delay = t;
-        dac_countdown::heading::timestamp = millis();
-        dac_countdown::heading::heading = fmod(h, 2*PI);
+        heading_countdown.on_delay = true;
+        heading_countdown.delay = t;
+        heading_countdown.timestamp = millis();
+        heading_countdown.val = fmod(h, 2*PI);
     }
 
     void FTHandler::set_index_on_delay(int t, int i ) {
-        dac_countdown::index::on_delay = true;
-        dac_countdown::index::delay = t;
-        dac_countdown::index::timestamp = millis();
-        dac_countdown::index::index = std::max(std::min(i, max_dac_val),0);
+        index_countdown.on_delay = true;
+        index_countdown.delay = t;
+        index_countdown.timestamp = millis();
+        index_countdown.val = std::max(std::min(i, max_dac_val),0);
     }

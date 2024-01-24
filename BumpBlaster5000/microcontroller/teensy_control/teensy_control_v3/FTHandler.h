@@ -2,27 +2,32 @@
 #define FTHANDLER_H
 
 #include "Arduino.h"
-#include <Wire.h>
+
+#include <Adafruit_BusIO_Register.h>
+#include <Adafruit_I2CDevice.h>
 #include <Adafruit_MCP4725.h>
+#include <Wire.h>
 #include <math.h>
 #include <cstring>
 #include <algorithm>
 using namespace std;
 
-
+const int num_chars = 256;
 
 struct dac_countdown {
     bool on_delay = false;
     int delay;
     int timestamp;
     double val;
-}
+};
 
 class FTHandler {
     bool closed_loop = true;
     char chars[num_chars]; 
     bool new_data = false;
-    
+
+    int h_addr;
+    int i_addr;
     double heading;
     bool new_heading;
     dac_countdown heading_countdown;
@@ -36,8 +41,8 @@ class FTHandler {
     int current_frame = 0;
     int frame_pin;
 
-    static int max_dac_val = 4095;
-    static int num_cols = 26; 
+    int max_dac_val = 4095;
+    int num_cols = 26; 
 
     int col=0;
     int curr_time;
@@ -53,8 +58,9 @@ class FTHandler {
     void execute_col();
 
     public: 
-        void FTHandler();
-        void init();
+        FTHandler(Stream& srl_ref);
+        void init(int f_pin, TwoWire* w1, uint8_t addr1, TwoWire* w2, 
+                    uint8_t addr2);
         
         void process_srl_data();
         void update_dacs();
@@ -73,7 +79,7 @@ class FTHandler {
         void set_index_on_delay(int t, int i );
 
 
-}
+};
 
 // namespace ft {
 
