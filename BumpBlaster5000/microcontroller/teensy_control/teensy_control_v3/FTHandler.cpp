@@ -1,12 +1,20 @@
 #include "Arduino.h"
 #include "FTHandler.h"
 
-void FTHandler::FTHandler() {}
+void FTHandler::FTHandler(Stream& srl_ref) {
 
-void FTHandler::init(f_pin, wire1, addr1, wire2, addr2) {
+    srl = srl_ref;
+    
+    }
+
+void FTHandler::init(int f_pin, Wire& w1, int addr1, Wire& w2, 
+                    int addr2) {
     // initialize frame pin
+    frame_pin = f_pin;
 
     // initialize dacs
+    heading_dac.begin(addr1, w1);
+    index_dac.begin(addr2, w2);    
     
 }
 
@@ -19,8 +27,8 @@ void FTHandler::recv_data() { // receive Fictrac data
 
     static int _col_tmp;
 
-    if (Serial.available() > 0) { // cannot use while(Serial.available()) because Teensy will read all 
-        curr_byte = Serial.read(); 
+    if (srl.available() > 0) { // cannot use while(Serial.available()) because Teensy will read all 
+        curr_byte = srl.read(); 
         if ((curr_byte == endline)|(curr_byte==delimiter)) { // end of frame or new column      
             chars[ndx] = '\0'; // terminate the string
             ndx = 0; // restart buffer index
@@ -43,7 +51,7 @@ void FTHandler::recv_data() { // receive Fictrac data
     }
 }
 
-    void update_col() {
+    void FTHandler::update_col() {
 
         // switch case statement for variables of interest
         switch (col) {
@@ -63,13 +71,15 @@ void FTHandler::recv_data() { // receive Fictrac data
 
                 // update heading pin
                 ft_heading = atof(chars) + PI;
-                new_heading = true;
+                if (closed_loop) {
+                    new_heading = true;
+                }
                 break;
         }
     }
     
-    void execute_col() {
-        ft::recv_data(); 
+    void FTHandler::execute_col() {
+        FTHandler::recv_data(); 
         if (new_data == true) {
             ft::update_col();
             col = (col+1) % num_cols; // keep track of columns in fictrack  
@@ -77,26 +87,26 @@ void FTHandler::recv_data() { // receive Fictrac data
         }
     }
     
-    void process_serial_data(){
-        ft::execute_col();
+    void FTHandler::process_serial_data(){
+        FTHandler::execute_col();
         if (closed_loop) {
             heading = fmod(ft_heading + heading_offset, 2*PI);
         } 
     }
 
-    void update_dacs() {
+    void FTHandler::update_dacs() {
         // check on delay timers
         curr_time = millis();
-        if (dac_countdown::heading::on_delay ) {
-            if (curr_time > (dac_countdown::heading::timestamp + dac_countdown::heading::delay)) {
-                heading = dac_countdown::heading::heading;
-                dac_countdown::heading::on_delay = false;
+        if (heading_countdown.on_delay ) {
+            if (curr_time > (heading_countdown.timestamp + heading_countdown.delay)) {
+                heading = heading_countdown.heading;
+                heading_countdown.on_delay = false;
                 new_heading = true;
             }
         }
 //
-        if (dac_countdown::index::on_delay) {
-            if (curr_time > (dac_countdown::index::timestamp + dac_countdown::index::delay)) {
+        if (index_countdown.on_delay) {
+            if (curr_time > (index_countdown.timestamp + index_countdown.delay)) {
                 index = dac_countdown::index::index;
                 dac_countdown::index::on_delay = false;
                 new_index = true;
@@ -115,36 +125,36 @@ void FTHandler::recv_data() { // receive Fictrac data
 
     }
 
-    void set_heading(int h) {
+    void FTHandler::set_heading(int h) {
         heading = fmod(h, 2*PI);
         new_heading = true;
     }
 
-    void set_index(int i) {
+    void FTHandler::set_index(int i) {
         index = std::max(std::min(i, max_dac_val),0);
         new_index = true;
     }
 
-    void set_heading_offset(double o) {
+    void FTHandler::set_heading_offset(double o) {
         heading_offset = o;
     }
 
-    void rotate_scene(double r) {
+    void FTHandler::rotate_scene(double r) {
         heading_offset = fmod(heading_offset + r, 2*PI);
     }
 
-    int get_index() {
+    int FTHandler::get_index() {
         return index;
     }
 
-    void set_heading_on_delay(int t, double h){
+    void FTHandler::set_heading_on_delay(int t, double h){
         dac_countdown::heading::on_delay = true;
         dac_countdown::heading::delay = t;
         dac_countdown::heading::timestamp = millis();
         dac_countdown::heading::heading = fmod(h, 2*PI);
     }
 
-    void set_index_on_delay(int t, int i ) {
+    void FTHandler::set_index_on_delay(int t, int i ) {
         dac_countdown::index::on_delay = true;
         dac_countdown::index::delay = t;
         dac_countdown::index::timestamp = millis();
