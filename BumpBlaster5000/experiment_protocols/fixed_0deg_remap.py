@@ -12,7 +12,7 @@ def build_cmd_str(queue):
 
 
 
-    headings = np.arange(0, max_dac_val, max_dac_val/n_spots, dtype=int)
+    headings = np.arange(0, 2*np.pi, 2*np.pi/n_spots, dtype=int)
 
     cmd_len = 5*(n_spots+2)
     cmd = [cmd_len, 10]
