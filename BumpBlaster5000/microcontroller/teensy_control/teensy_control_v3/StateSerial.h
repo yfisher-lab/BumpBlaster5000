@@ -5,11 +5,11 @@
 #include "Arduino.h"
 
 class StateSerial {
+    int num_chars = 256;
     char chars[256];
     bool new_data = false;
     int cmd_index = 0;
     
-    int data_rcvd_timestamp;
 
     Stream& srl;
 
@@ -24,8 +24,7 @@ class StateSerial {
         StateSerial(Stream& srl_ref);
         void recv_data();
         void read_state();
-}
+};
 
 
-
-#endif STATESERIAL_H
+#endif

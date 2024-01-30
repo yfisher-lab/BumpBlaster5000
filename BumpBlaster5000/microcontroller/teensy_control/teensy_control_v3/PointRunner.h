@@ -17,7 +17,7 @@ class VisOptoPointRunner {
     int curr_point_time;
 
     int start_ind;
-    bool pts_complete;
+    bool pts_complete = true;
 
     int pnt_len = 5;
 
@@ -34,7 +34,7 @@ class VisOptoPointRunner {
         void check_for_next_point(int curr_time);
         void abort_points();
 
-}
+};
 
 class PumpOptoPointRunner {
     bool on_multi_point = false;
@@ -45,7 +45,7 @@ class PumpOptoPointRunner {
     int curr_point_time;
 
     int start_ind;
-    bool pts_complete;
+    bool pts_complete = true;
 
     int pnt_len = 5;
 
@@ -61,13 +61,8 @@ class PumpOptoPointRunner {
         void start_points();
         void check_for_next_point(int curr_time);
         void abort_points();
-}
+};
 
 
 
-
-
-
-
-
-#endif POINTRUNNER_H
+#endif

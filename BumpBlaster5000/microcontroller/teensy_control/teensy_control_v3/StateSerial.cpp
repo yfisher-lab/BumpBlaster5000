@@ -34,6 +34,7 @@ void StateSerial::read_state() {
  
     StateSerial::recv_data();
     if (new_data) {
+//        SerialUSB2.println(cmd_index);
         if (cmd_index==0) { // first value is the length of the state machine message
             cmd_len = atoi(chars);
             begin_msg_timestamp = millis();
@@ -55,14 +56,14 @@ void StateSerial::read_state() {
         new_data = false;
     }
 
-    if (((data_rcvd_timestamp-begin_msg_timestamp)>msg_timeout)
+    if (((millis()-begin_msg_timestamp)>msg_timeout)
         & (begin_msg_timestamp>0)) { // if command isn't read before timeout
         //abort 
         cmd = 5; // return to closed loop
         cmd_len = 0;
+        cmd_index = 0;
         begin_msg_timestamp = -1;
+        SerialUSB2.println("Timeout");
         new_cmd=true;
     }        
 }
-
-
