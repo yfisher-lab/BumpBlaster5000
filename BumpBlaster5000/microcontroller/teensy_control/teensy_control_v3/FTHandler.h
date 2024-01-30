@@ -14,15 +14,15 @@ using namespace std;
 
 const int num_chars = 256;
 
-struct dac_countdown {
+struct dac_countdown { // struct for storing info about when to set dac
     bool on_delay = false;
     int delay;
     int timestamp;
     double val;
 };
 
-class FTHandler {
-    bool closed_loop = true;
+class FTHandler { 
+    bool closed_loop = true; 
     char chars[num_chars]; 
     bool new_data = false;
 

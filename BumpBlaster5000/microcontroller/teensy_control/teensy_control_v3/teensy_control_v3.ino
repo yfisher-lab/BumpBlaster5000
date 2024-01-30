@@ -21,39 +21,39 @@ FTHandler ft(Serial); // reads fictrac data and controls DACs
 
 StateSerial ss(SerialUSB1); // reads commands from python interface
 
-VisOptoPointRunner vis_opto_pr(opto_trig, ft, ss);
-PumpOptoPointRunner pump_opto_pr(opto_trig, pump_trig, ss);
+VisOptoPointRunner vis_opto_pr(opto_trig, ft, ss); // control visual stimulus and opto trigger
+PumpOptoPointRunner pump_opto_pr(opto_trig, pump_trig, ss); // control microinjector pump trigger and opto trigger
 
 void setup() {
-  // put your setup code here, to run once:
+  
 
     bk_scan.is_scanning = false;
-    bk_scan.trig.init(3, 10, false);
+    bk_scan.trig.init(3, 10, false); // initialize pin
 
-    opto_trig.init(4, 10, false);
+    opto_trig.init(4, 10, false); // initialize pin
   
     // Pump trigger setup
-    pump_trig.init(5, 500, true);
+    pump_trig.init(5, 500, true); // initialize pin, invert pin
   
 
-    ft.init(2, &Wire1, 0x62, &Wire1, 0x63);
+    ft.init(2, &Wire1, 0x62, &Wire1, 0x63); // initialize dacs
 
-    BKSERIAL.begin(115200);
+    BKSERIAL.begin(115200); // hardware serial
 }
 
 void yield() {} // get rid of hidden arduino yield function
 
 FASTRUN void loop() { // FASTRUN teensy keyword
 
-    ss.read_state();
-    if ss.new_cmd {
+    ss.read_state(); // read state machine serial port
+    if ss.new_cmd { // if new state
         execute_state();
     }
 
-    ft.process_srl_data();
-    ft.update_dacs();
+    ft.process_srl_data(); // read fictrac data
+    ft.update_dacs(); // update DAC pins to control arena
 
-    check_pins();
+    check_pins(); // flip triggers down, check stimulation timers
 }
 
 

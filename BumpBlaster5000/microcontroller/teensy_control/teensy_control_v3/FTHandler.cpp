@@ -1,10 +1,7 @@
 #include "Arduino.h"
 #include "FTHandler.h"
 
-FTHandler::FTHandler(Stream& srl_ref): srl(srl_ref) {
-
-//    srl = srl_ref;
-    
+FTHandler::FTHandler(Stream& srl_ref): srl(srl_ref) {    
     }
 
 void FTHandler::init(int f_pin, TwoWire* w1, uint8_t addr1, TwoWire* w2, 
