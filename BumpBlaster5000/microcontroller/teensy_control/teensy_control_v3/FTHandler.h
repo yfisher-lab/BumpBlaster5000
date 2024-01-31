@@ -22,7 +22,7 @@ struct dac_countdown { // struct for storing info about when to set dac
 };
 
 class FTHandler { 
-    bool closed_loop = true; 
+//    bool closed_loop = true; 
     char chars[num_chars]; 
     bool new_data = false;
 
