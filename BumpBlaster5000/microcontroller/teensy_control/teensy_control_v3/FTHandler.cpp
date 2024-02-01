@@ -72,7 +72,7 @@ void FTHandler::recv_data() { // receive Fictrac data
                 digitalWriteFast(frame_pin,LOW);
 
                 // update heading pin
-                ft_heading = atof(chars) + PI;
+                ft_heading = atof(chars); // + PI;
                 if (closed_loop) {
                     new_heading = true;
                 }
