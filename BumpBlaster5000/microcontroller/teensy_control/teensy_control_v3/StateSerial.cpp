@@ -43,7 +43,7 @@ void StateSerial::read_state() {
             cmd = atoi(chars);
         }
         else { // the remaining value are parameters specific to the state
-            val_arr[cmd_index-2] = atoi(chars);
+            val_arr[cmd_index-2] = atof(chars);
         }
         
         cmd_index +=1; // update index

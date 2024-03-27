@@ -45,6 +45,9 @@ void yield() {} // get rid of hidden arduino yield function
 
 FASTRUN void loop() { // FASTRUN teensy keyword
 
+    
+    ft.process_srl_data(); // read fictrac data
+
     ss.read_state(); // read state machine serial port
     if (ss.new_cmd) { // if new state
         
@@ -52,7 +55,6 @@ FASTRUN void loop() { // FASTRUN teensy keyword
         ss.new_cmd=false;
     }
 
-    ft.process_srl_data(); // read fictrac data
     ft.update_dacs(); // update DAC pins to control arena
 
     check_pins(); // flip triggers down, check stimulation timers

@@ -127,7 +127,7 @@ void FTHandler::recv_data() { // receive Fictrac data
 
     }
 
-    void FTHandler::set_heading(int h) {
+    void FTHandler::set_heading(double h) {
         heading = fmod(h, 2*PI);
         new_heading = true;
     }

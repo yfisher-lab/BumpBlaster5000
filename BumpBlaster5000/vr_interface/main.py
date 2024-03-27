@@ -167,7 +167,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
         self.exp_process.kill()
         
     def send_heading_val(self):
-        new_heading = int(self.heading_pin_input.text())
+        new_heading = float(self.heading_pin_input.text())
         self.teensy_input_queue.put(f"1,6,{new_heading}\n".encode('UTF-8'))
         
     def send_index_val(self):
