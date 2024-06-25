@@ -9,7 +9,7 @@ VisOptoPointRunner::VisOptoPointRunner(Trigger& _o_trig,
 
 void VisOptoPointRunner::run_point() {
 
-    static int _h;
+    static double _h;
     static int _i;
     static int _opto_bool;
     static int _opto_delay;
