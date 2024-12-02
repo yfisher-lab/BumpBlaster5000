@@ -25,7 +25,7 @@ def build_cmd_str(queue):
     # heading, index, opto_bool, opto_delay, combined_dur
     cmd.extend([0,  4095,   0,  0, 5000])
     # set each 
-    for h in headings.tolist():
+    for h in headings:
         cmd.extend([h, 0, 1, 0, 2000])
     cmd.extend([0,  4095,   0,  0, 5000])
 
