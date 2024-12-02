@@ -4,4 +4,5 @@ from . import dangling_fly_two_sec_pairing, dangling_fly_two_sec_pairing_reverse
 from . import puff_pairing_5x
 from . import bar_jumping_pi_TQ
 from . import remap_novis_control
-
+from . import across_circ_0deg_nolag, across_circ_0deg_vislead, across_circ_0deg_optolead
+from . import across_circ_180deg_nolag, across_circ_180deg_vislead, across_circ_180deg_optolead

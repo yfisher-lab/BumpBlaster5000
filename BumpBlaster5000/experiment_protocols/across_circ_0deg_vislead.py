@@ -26,7 +26,7 @@ def build_cmd_str(queue):
     cmd.extend([0,  4095,   0,  0, 5000])
     # set each 
     for h in headings.tolist():
-        cmd.extend([h, 0, 1, 0, 2000])
+        cmd.extend([h, 0, 1, 1000, 3000])
     cmd.extend([0,  4095,   0,  0, 5000])
 
 
@@ -37,7 +37,7 @@ def build_cmd_str(queue):
 
     queue.put(cmd_str.encode('UTF-8'))
 
-    sleep(2*n_spots + 8)
+    sleep(3*n_spots + 8)
     queue.put('0,5\n'.encode('UTF-8'))
     queue.put('1,7,0\n'.encode('UTF-8'))
 
