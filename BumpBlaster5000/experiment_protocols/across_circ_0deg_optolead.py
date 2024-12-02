@@ -12,7 +12,7 @@ def build_cmd_str(queue):
 
 
 
-    h = np.arange(0, 2*np.pi, 2*np.pi/n_spots, dtype=int)
+    h = np.arange(0, 2*np.pi, 2*np.pi/8, dtype=int)
     order = [0, 4, 1, 5, 2, 6, 3, 7, 4, 0, 5, 1, 6, 2, 7, 3, 0, 5, 0, 3, 6, 1, 4, 7, 2, 5,
              0, 4, 1, 5, 2, 6, 3, 7, 4, 0, 5, 1, 6, 2, 7, 3, 0, 5, 0, 3, 6, 1, 4, 7, 2, 5]
     headings = [h[o] for o in order]
