@@ -235,6 +235,8 @@ class BumpBlaster(pg_gui.WidgetWindow):
                 msg = srl.readline().decode('UTF-8').rstrip().split(',')
                 if msg[0] in set(('start', 'opto', 'abort', 'start_trig_falling_edge')):
                     self.ft_frames[msg[0]].append(int(msg[1]))
+                else:
+                    print(msg)
         srl.close()
 
             

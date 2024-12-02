@@ -117,7 +117,7 @@ void FTHandler::recv_data() { // receive Fictrac data
 
 ////          set dac vals
         if (new_heading){
-          heading_dac.setVoltage(int(max_dac_val * heading/2/PI), false);
+          heading_dac.setVoltage(int(double(max_dac_val) * heading/2.0/PI), false);
           new_heading = false;
         }
         if (new_index) {
@@ -128,7 +128,7 @@ void FTHandler::recv_data() { // receive Fictrac data
     }
 
     void FTHandler::set_heading(double h) {
-        heading = fmod(h, 2*PI);
+        heading = fmod(h, 2.0*PI);
         new_heading = true;
     }
 
@@ -142,7 +142,7 @@ void FTHandler::recv_data() { // receive Fictrac data
     }
 
     void FTHandler::rotate_scene(double r) {
-        heading_offset = fmod(heading_offset + r, 2*PI);
+        heading_offset = fmod(heading_offset + r, 2.0*PI);
     }
 
     int FTHandler::get_index() {
@@ -153,7 +153,7 @@ void FTHandler::recv_data() { // receive Fictrac data
         heading_countdown.on_delay = true;
         heading_countdown.delay = t;
         heading_countdown.timestamp = millis();
-        heading_countdown.val = fmod(h, 2*PI);
+        heading_countdown.val = fmod(h, 2.0*PI);
     }
 
     void FTHandler::set_index_on_delay(int t, int i ) {
