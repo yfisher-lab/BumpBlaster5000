@@ -12,7 +12,7 @@ def build_cmd_str(queue):
 
 
 
-    h = np.arange(0, 2*np.pi, 2*np.pi/8, dtype=int)
+    h = np.arange(0, 2*np.pi, 2*np.pi/8)
     order = [0, 4, 1, 5, 2, 6, 3, 7, 4, 0, 5, 1, 6, 2, 7, 3, 0, 5, 0, 3, 6, 1, 4, 7, 2, 5,
              0, 4, 1, 5, 2, 6, 3, 7, 4, 0, 5, 1, 6, 2, 7, 3, 0, 5, 0, 3, 6, 1, 4, 7, 2, 5]
     headings = [h[(o+4)%8] for o in order]
@@ -26,8 +26,8 @@ def build_cmd_str(queue):
     cmd.extend([0,  4095,   0,  0, 5000])
     # set each 
     for h in headings:
-        cmd.extend([h, 4095, 0, 0, 10])
-        cmd.extend([h, 0, 1, -1000, 3000])
+        cmd.extend([h, 4095, 1, 0, 1000])
+        cmd.extend([h, 0, 0, 0, 2000])
     cmd.extend([0,  4095,   0,  0, 5000])
 
 
@@ -38,7 +38,7 @@ def build_cmd_str(queue):
 
     queue.put(cmd_str.encode('UTF-8'))
 
-    sleep(3*n_spots + 8)
+    sleep(3*n_spots + 10)
     queue.put('0,5\n'.encode('UTF-8'))
     queue.put('1,7,0\n'.encode('UTF-8'))
 
