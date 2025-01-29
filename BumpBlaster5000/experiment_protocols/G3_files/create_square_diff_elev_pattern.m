@@ -36,7 +36,7 @@ pattern.BitMapIndex = process_panel_map(pattern);
 
 pattern.data = Make_pattern_vector(pattern);
 
-dir_name = 'C:\Users\fisherlab\Documents\repos\BumpBlaster5000\BumpBlaster5000\experiment_protocols';
+dir_name = 'C:\Users\fisherlab\Documents\repos\BumpBlaster5000\BumpBlaster5000\experiment_protocols\G3_files';
 filename = [dir_name '\Pattern_square_diff_elev_example_4pix'];
 
 save(filename, 'pattern');
