@@ -1,7 +1,6 @@
 import numpy as np
 import random
 from time import sleep
-from datetime import datetime
 
 def build_cmd_str(queue):
     queue.put('0,4\n'.encode('UTF-8')) # go into open loop
