@@ -7,7 +7,7 @@ def build_cmd_str(queue):
 
     max_dac_val = 4096
     n_spots = 96 # one per pixel
-    n_reps = 2
+    n_reps = 1
     n_indexes = 5 # 5 scenes, 4 square elevations and 1 dark
     n_rotations = 2 # cw and ccw
 
@@ -20,22 +20,22 @@ def build_cmd_str(queue):
 
     dark = indexes[-1]
 
-    frame_dur = 100 # ms
+    frame_dur = 50 # ms
     dark_dur = 4000 # ms
 
     # cw/ccw spin followed by dark
     i = indexes[2] 
 
-    for r in range(n_reps):
-        for h in headings[::-1].tolist(): # cw
-            cmd.extend([h, i, 0, 0, frame_dur])
+    # for r inrange(n_reps):
+    for h in headings[::-1].tolist(): # cw
+        cmd.extend([h, i, 0, 0, frame_dur])
         
-        cmd.extend([0, dark, 0, 0, dark_dur]) # dark period between elevations
+    cmd.extend([0, dark, 0, 0, dark_dur]) # dark period between elevations
 
-        for h in headings.tolist(): # ccw
-            cmd.extend([h, i, 0, 0, frame_dur])
+    for h in headings.tolist(): # ccw
+        cmd.extend([h, i, 0, 0, frame_dur])
 
-        cmd.extend([0, dark, 0, 0, dark_dur]) # dark period
+    cmd.extend([0, dark, 0, 0, dark_dur]) # dark period
 
     cmd_str = ""
     for item in cmd:
