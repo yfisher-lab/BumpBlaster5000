@@ -50,6 +50,9 @@ def build_cmd_str(queue):
     queue.put(cmd_str.encode('UTF-8'))
     sleep(2*((n_spots*n_reps*(n_indexes-1))+(n_reps*(n_indexes-1))))
 
+    # go back into closed loop
+    queue.put('0,5\n'.encode('UTF-8'))
+
     return
 
 def run(queue):
