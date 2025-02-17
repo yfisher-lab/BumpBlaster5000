@@ -4,59 +4,53 @@ from time import sleep
 
 def build_cmd_str(queue):
     queue.put('0,4\n'.encode('UTF-8')) # go into open loop
-    
-    max_dac_val = 4096
+
+    max_dac_val = 4096 # value for the last scene in pattern
     n_spots = 96 # one per pixel
-    n_reps = 2
+    n_reps = 3
     n_indexes = 5 # 5 scenes, 4 square elevations and 1 dark
 
-    # create heading and index arrays
     headings = np.arange(0, 2*np.pi, 2*np.pi/n_spots)
-    indexes = np.arange(0, 5000, 5000/n_indexes)
+    indexes = np.arange(0, max_dac_val+1, max_dac_val/n_indexes)
 
-    # initialize command string with expected length using point setter case
-    cmd_len = 5*(2*((n_spots*n_reps*(n_indexes-1))+(n_reps*(n_indexes-1)))) # 5 inputs to point setter case + total reps of frame/index combos
-    cmd = [cmd_len, 10]
-
-    # set last index as dark scene
     dark = indexes[-1]
 
-    # duration of each frame in heading (approx 1.1 deg / duration)
+    n_pr_inputs = 5 # num inputs to PointRunner (heading, index, opto_bool, opto_delay, combined_dur)
     frame_dur = 50 # ms
-    # shuffled_ind = random.sample(indexes[0:-1].tolist(), k=len(indexes[0:-1]))
+    dark_dur = 4000 # ms
 
-    # alternate cw and ccw in open loop at randomly ordered elevations
-    # heading, index, opto_bool, opto_delay, combined_dur
-    for r in range(n_reps):    
-        shuffled_ind = random.sample(indexes[0:-1].tolist(), k=len(indexes[0:-1])) # change elevation order during each rep
-        for i in shuffled_ind:    
-            for h in headings.tolist():
-                cmd.extend([h, i, 0, 0, frame_dur])
-            
-            cmd.extend([0, dark, 0, 0, 4000]) # dark period between cw/ccw
-            
-            for h in headings[::-1].tolist():
-                cmd.extend([h, i, 0, 0, frame_dur])
-    
-            cmd.extend([0, dark, 0, 0, 4000]) # dark period between elevations
+    # cw/ccw spin followed by dark 
+    for _ in range(n_reps):
+        shuffled_ind = random.sample(indexes[1:-1].tolist(), k=len(indexes[1:-1])) # change elevation order during each rep
+        for i in shuffled_ind:
+            # cw spin
+            cmd_len = n_pr_inputs*(n_spots + 1)
+            cmd = [cmd_len, 10]
+            for h in headings[::-1].tolist(): 
+                cmd.extend([h, i, 0, 0, frame_dur])       
+            cmd.extend([0, dark, 0, 0, dark_dur]) # dark period
+            queue.put(cmd_to_str(cmd).encode('UTF-8'))
+            sleep(((n_spots*frame_dur)+dark_dur)/1000)
 
-    # convert command string format
+            # ccw spin
+            cmd_len = n_pr_inputs*(n_spots + 1)
+            cmd = [cmd_len, 10]
+            for h in headings.tolist(): 
+                cmd.extend([h, i, 0, 0, frame_dur])
+            cmd.extend([0, dark, 0, 0, dark_dur]) # dark period
+            queue.put(cmd_to_str(cmd).encode('UTF-8'))
+            sleep(((n_spots*frame_dur)+dark_dur)/1000)
+
+    queue.put('0,5\n'.encode('UTF-8')) # go back into closed loop
+    queue.put('1,7,0\n'.encode('UTF-8')) # set index back to 0 (top square) for troubleshooting end of expt
+
+def cmd_to_str(cmd):
     cmd_str = ""
     for item in cmd:
         cmd_str = cmd_str + f"{item},"
     cmd_str = cmd_str[:-1] + "\n"
-
-    # send command to queue and wait some time
-    queue.put(cmd_str.encode('UTF-8'))
-    sleep(2*((n_spots*n_reps*(n_indexes-1))+(n_reps*(n_indexes-1))))
-
-    # go back into closed loop
-    queue.put('0,5\n'.encode('UTF-8'))
-
-    return
+    return cmd_str
 
 def run(queue):
     build_cmd_str(queue)
-
     return
-
