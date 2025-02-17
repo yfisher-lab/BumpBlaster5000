@@ -7,7 +7,7 @@ def build_cmd_str(queue):
 
     max_dac_val = 4096
     n_spots = 96 # one per pixel
-    n_reps = 1 # right now this does not work if it's > 1
+    n_reps = 2 # right now this does not work if it's > 1
     n_indexes = 5 # 5 scenes, 4 square elevations and 1 dark
     n_rotations = 2 # cw and ccw
 
@@ -26,7 +26,7 @@ def build_cmd_str(queue):
     # cw/ccw spin followed by dark
     i = indexes[2] 
 
-    for r in range(n_reps):
+    for _ in range(n_reps):
         for h in headings[::-1].tolist(): # cw
             cmd.extend([h, i, 0, 0, frame_dur])
             
@@ -44,7 +44,8 @@ def build_cmd_str(queue):
 
     queue.put(cmd_str.encode('UTF-8'))
     cl_dur = n_reps*n_rotations*(((n_spots*frame_dur)+dark_dur)/1000)
-    sleep(2*n_reps*(((n_spots*frame_dur) + 4000))/1000) # sec, this needs to be the approximate length of the open loop duration or else it moves on to the next queue immediately
+    sleep(cl_dur)
+    # sleep(n_rotations*n_reps*(((n_spots*frame_dur) + 4000))/1000) # sec, this needs to be the approximate length of the open loop duration or else it moves on to the next queue immediately
 
     queue.put('0,5\n'.encode('UTF-8')) # go back into closed loop
     queue.put('1,7,0\n'.encode('UTF-8')) # set index back to 0
