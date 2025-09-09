@@ -17,9 +17,9 @@ class Trigger {
     public:
         Trigger();
         void init(int id, int to, bool invert);
-        void trigger();
+        void trigger();         // switch on 
         void trigger_on_delay(int t);
-        void check(int curr);
+        void check(int curr);   // check time
         bool pin_state();
         int get_timestamp();
         int get_timeout();

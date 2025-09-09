@@ -23,6 +23,7 @@ class BumpBlaster(pg_gui.WidgetWindow):
         self._params = params.FT_PC_PARAMS
 
         ## Teensy push button connections
+        # QUESTION: add gain controll button here?
         self.start_scan_button.clicked.connect(self.start_scan)
         self.stop_scan_button.clicked.connect(self.stop_scan)
         self.trigger_opto_button.clicked.connect(self.trigger_opto)
@@ -166,6 +167,13 @@ class BumpBlaster(pg_gui.WidgetWindow):
    
         self.exp_process.kill()
         
+    def send_gain_val(self):
+        # TODO: assign gain from GUI controls
+        # QUESTION: port needed? which port should be used?
+        new_gain = 1.0  # TODO: pull gain value from GUI
+        # QUESTION: is having a 16th case ok bitwidth-wise?
+        self.teensy_input_queue.put(f"1,16,{new_gain}\n".encode('UTF-8'))
+
     def send_heading_val(self):
         new_heading = float(self.heading_pin_input.text())
         self.teensy_input_queue.put(f"1,6,{new_heading}\n".encode('UTF-8'))

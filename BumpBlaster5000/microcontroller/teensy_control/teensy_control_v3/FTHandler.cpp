@@ -66,6 +66,13 @@ void FTHandler::recv_data() { // receive Fictrac data
             case 1: // frame counter
                 current_frame = atoi(chars);
                 break;
+            
+            case 8: // delta rotation vector z axis lab coordiates in angle/axis (radians)
+                ft_delta_heading_raw = atof(chars);
+                if (closed_loop) {
+                    new_heading = true;
+                }
+                break;
 
             case 17: // heading 
                 // flip ft pin low 
@@ -92,8 +99,12 @@ void FTHandler::recv_data() { // receive Fictrac data
     void FTHandler::process_srl_data(){
         FTHandler::execute_col();
         if (closed_loop) {
-            heading = fmod(ft_heading + heading_offset, 2*PI);
-        } 
+            if (gain_control) {
+                heading = fmod(ft_gc_heading + gain*ft_delta_heading_raw + heading_offset, 2*PI);
+            } else {
+                heading = fmod(ft_heading + heading_offset, 2*PI);
+            }
+        }
     }
 
     void FTHandler::update_dacs() {
@@ -115,7 +126,7 @@ void FTHandler::recv_data() { // receive Fictrac data
             }
         }
 
-////          set dac vals
+////          set dac vals (no change needed for gain manipulation case)
         if (new_heading){
           heading_dac.setVoltage(int(double(max_dac_val) * heading/2.0/PI), false);
           new_heading = false;

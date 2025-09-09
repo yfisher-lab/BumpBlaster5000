@@ -147,6 +147,16 @@ void execute_state() {
         case 15: // rotate scene by set amount in radians
             ft.rotate_scene(ss.val_arr[0]);
             break;
+        
+        case 16: // enter gain manipulation mode, set gain
+            // TODO: add gc_closed_loop case to python GUI (no changes needed to ss)
+            ft.gain = ss.val_arr[0];
+            if (ss.val_arr[0] != 1.0) {
+                ft.gain_control = true;
+            } else {
+                ft.gain_control = false;
+            }
+            break;
    }
 }
 

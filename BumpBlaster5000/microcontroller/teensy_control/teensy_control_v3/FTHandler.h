@@ -32,6 +32,9 @@ class FTHandler {
     bool new_heading;
     dac_countdown heading_countdown;
     double ft_heading;
+    double ft_gc_heading=0;         // integrated gain-maniopulated heading
+    // initialize gc heading with ft_heading value? does it matter?
+    double ft_delta_heading_raw;
     int index;
     bool new_index;
     dac_countdown index_countdown;
@@ -61,6 +64,8 @@ class FTHandler {
 
         int current_frame = 0;
         bool closed_loop = true;
+        bool gain_control = true;   // HARDCODED FOR TESTING
+        double gain = 0.5;          // HARDCODED FOR TESTING
         
         FTHandler(Stream& srl_ref);
         void init(int f_pin, TwoWire* w1, uint8_t addr1, TwoWire* w2, 
