@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "BumpBlaster5000"
+version = "0.0.1"
+authors = [
+    {name = "Mark Plitt", email = "markplitt@gmail.com"},
+]
+description = "Drosophila central complex imaging and behavior control"
+readme = "README.md"
+license = {text = "BSD"}
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Topic :: Utilities",
+    "License :: OSI Approved :: BSD License",
+]
+dependencies = [
+    "numpy",
+    "scipy",
+    "pyqt5",
+    "pyserial",
+    "pyqtgraph",
+    "ipython",
+    "pandas",
+    "pywin32; sys_platform == 'win32'",
+    "numba",
+    "pillow",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["BumpBlaster5000*"]
+
+[tool.uv]
+dev-dependencies = []
