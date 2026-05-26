@@ -59,7 +59,7 @@ class FicTracSocketManager:
 
     """
 
-    def __init__(self, fictrac_path=FICTRAC_PATH, config_file=CONFIG_PATH, host='127.0.0.1', port=65413,
+    def __init__(self, fictrac_path=FICTRAC_PATH, config_file=CONFIG_PATH, host='127.0.0.1', port=5890,
                  columns_to_read=None, plot_buffer_time = 600,
                  ):
         """

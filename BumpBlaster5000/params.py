@@ -1,9 +1,9 @@
 plot_ds, plot_buffer_time, fictrac_frame_rate = 10, 600, 450
 
 FT_PC_PARAMS = {
-    'teensy_input_com': 'COM11',
-    'teensy_output_com': 'COM12',
-    'pl_com': 'COM13',
+    'teensy_input_com': 'COM20',
+    'teensy_output_com': 'COM19',
+    'pl_com': 'COM18',
     'baudrate': 115200,
     'plot_buffer_length': int(fictrac_frame_rate*plot_buffer_time/plot_ds),
 }
