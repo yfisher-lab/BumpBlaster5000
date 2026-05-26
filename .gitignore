@@ -136,3 +136,4 @@ scratch/*
 .vscode/settings.json
 .gitignore
 .vscode/settings.json
+.DS_Store
