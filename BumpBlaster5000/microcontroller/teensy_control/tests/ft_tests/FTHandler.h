@@ -28,7 +28,7 @@ namespace ft {
     static int current_frame = 0;
     const int frame_pin = 2; 
 
-    const int max_dac_val = 4095;
+    const int max_dac_val = 1023;
     const int num_cols = 26; 
 
     static int col;

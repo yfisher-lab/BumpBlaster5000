@@ -1,23 +1,20 @@
 #include "Arduino.h"
 #include "FTHandler.h"
 
-FTHandler::FTHandler(Stream& srl_ref): srl(srl_ref) {    
+FTHandler::FTHandler(Stream& srl_ref): srl(srl_ref), dac(10) {
+    // Default CS pin 10; overridden in init() via begin().
     }
 
-void FTHandler::init(int f_pin, TwoWire* w1, uint8_t addr1, TwoWire* w2, 
-                    uint8_t addr2) {
+void FTHandler::init(int f_pin, int cs_pin, SPIClass& spi_port) {
     // initialize frame pin
     frame_pin = f_pin;
+    pinMode(frame_pin, OUTPUT);
+    digitalWriteFast(frame_pin, LOW);
 
-    pinMode(frame_pin,OUTPUT);
-    digitalWriteFast(frame_pin,LOW);
-
-    h_addr = addr1;
-    i_addr = addr2;
-    // initialize dacs
-    heading_dac.begin(h_addr, w1);
-    index_dac.begin(i_addr, w2);    
-    
+    // initialize LTC1661 dual-channel SPI DAC
+    // Channel 0 (DAC A) = heading, Channel 1 (DAC B) = index
+    dac = LTC1661(cs_pin, spi_port);
+    dac.begin();
 }
 
 void FTHandler::recv_data() { // receive Fictrac data
@@ -116,12 +113,14 @@ void FTHandler::recv_data() { // receive Fictrac data
         }
 
 ////          set dac vals
-        if (new_heading){
-          heading_dac.setVoltage(int(double(max_dac_val) * heading/2.0/PI), false);
+        if (new_heading) {
+          // Channel 0 (DAC A): heading mapped from [0, 2π) to [0, 1023]
+          dac.setDAC(0, (uint16_t)(double(max_dac_val) * heading / (2.0 * PI)));
           new_heading = false;
         }
         if (new_index) {
-          index_dac.setVoltage(int(index), false);
+          // Channel 1 (DAC B): index raw value [0, 1023]
+          dac.setDAC(1, (uint16_t)index);
           new_index = false;
         }
 

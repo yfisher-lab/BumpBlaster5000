@@ -3,10 +3,8 @@
 
 #include "Arduino.h"
 
-#include <Adafruit_BusIO_Register.h>
-#include <Adafruit_I2CDevice.h>
-#include <Adafruit_MCP4725.h>
-#include <Wire.h>
+#include "LTC1661.h"
+#include <SPI.h>
 #include <math.h>
 #include <cstring>
 #include <algorithm>
@@ -26,8 +24,6 @@ class FTHandler {
     char chars[num_chars]; 
     bool new_data = false;
 
-    int h_addr;
-    int i_addr;
     double heading;
     bool new_heading;
     dac_countdown heading_countdown;
@@ -41,7 +37,7 @@ class FTHandler {
     
     int frame_pin;
 
-    int max_dac_val = 4095;
+    int max_dac_val = 1023; // LTC1661 is 10-bit
     int num_cols = 26; 
 
     int col=0;
@@ -49,22 +45,22 @@ class FTHandler {
 
     Stream& srl;  
 
-    Adafruit_MCP4725 heading_dac;
-    Adafruit_MCP4725 index_dac;
+    // Single LTC1661 dual-channel 10-bit SPI DAC.
+    // Channel 0 (DAC A) = heading, Channel 1 (DAC B) = index.
+    LTC1661 dac;
 
-    
+
     void recv_data();
     void update_col();
     void execute_col();
 
-    public: 
+    public:
 
         int current_frame = 0;
         bool closed_loop = true;
-        
+
         FTHandler(Stream& srl_ref);
-        void init(int f_pin, TwoWire* w1, uint8_t addr1, TwoWire* w2, 
-                    uint8_t addr2);
+        void init(int f_pin, int cs_pin, SPIClass& spi_port = SPI);
         
         void process_srl_data();
         void update_dacs();
