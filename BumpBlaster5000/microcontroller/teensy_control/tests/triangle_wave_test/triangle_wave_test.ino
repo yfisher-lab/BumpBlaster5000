@@ -15,7 +15,7 @@
 
 // --- configuration ---------------------------------------------------
 
-LTC1661 dac(10, SPI1);         // CS pin 10, SPI port 1
+LTC1661 dac(10, SPI);         // CS pin 10, SPI port 1
 
 const int   TOGGLE_PINS[]    = {2, 3, 4, 5};
 const int   NUM_TOGGLE_PINS  = 4;
