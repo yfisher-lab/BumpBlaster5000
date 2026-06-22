@@ -13,7 +13,7 @@ def build_cmd_str(queue):
 
     
 
-    queue.put('1,7,4095\n'.encode('UTF-8'))
+    queue.put('1,7,1023\n'.encode('UTF-8'))
     sleep(60*3)
     queue.put('1,7,0\n'.encode('UTF-8'))
 

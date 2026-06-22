@@ -8,7 +8,7 @@ def build_cmd_str(queue):
 
     queue.put('0,4\n'.encode('UTF-8'))
 
-    max_dac_val = 4096
+    max_dac_val = 1024
     n_spots = 96 # one per pixel
     n_reps = 5
 
@@ -16,7 +16,7 @@ def build_cmd_str(queue):
     # print(headings.shape)
 
 
-    queue.put('1,7,4095\n'.encode('UTF-8'))
+    queue.put('1,7,1023\n'.encode('UTF-8'))
     sleep(5)
     for r in range(n_reps):
         for h in headings.tolist():
@@ -24,12 +24,12 @@ def build_cmd_str(queue):
             queue.put(cmd.encode('UTF-8'))
             sleep(.2)
             # cmd.extend([h, 0, 1, 0, 1875])
-        cmd = f'2,8,{h},4095\n'
+        cmd = f'2,8,{h},1023\n'
         queue.put(cmd.encode('UTF-8'))
-        cmd = f'2,8,0,4095\n'
+        cmd = f'2,8,0,1023\n'
         queue.put(cmd.encode('UTF-8'))
     # cmd.extend([0,  4095,   0,  0, 5000])
-    queue.put('1,7,4095\n'.encode('UTF-8'))
+    queue.put('1,7,1023\n'.encode('UTF-8'))
     sleep(5)
 
     # cmd_str = ""

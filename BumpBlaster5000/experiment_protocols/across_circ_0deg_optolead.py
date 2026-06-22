@@ -7,7 +7,7 @@ def build_cmd_str(queue):
 
     queue.put('0,4\n'.encode('UTF-8'))
 
-    max_dac_val = 4096
+    max_dac_val = 1023
     
 
 
@@ -23,12 +23,12 @@ def build_cmd_str(queue):
     cmd = [cmd_len, 10]
     # set index to 1 to hide scene
     # heading, index, opto_bool, opto_delay, combined_dur
-    cmd.extend([0,  4095,   0,  0, 5000])
+    cmd.extend([0,  max_dac_val-1,   0,  0, 5000])
     # set each 
     for h in headings:
-        cmd.extend([h, 4095, 1, 0, 1000])
+        cmd.extend([h, max_dac_val-1, 1, 0, 1000])
         cmd.extend([h, 0, 0, 0, 2000])
-    cmd.extend([0,  4095,   0,  0, 5000])
+    cmd.extend([0,  max_dac_val-1,   0,  0, 5000])
 
 
     cmd_str = ""

@@ -28,9 +28,9 @@ void setup() {
   
 
     bk_scan.is_scanning = false;
-    bk_scan.trig.init(3, 10, false); // initialize pin
+    bk_scan.trig.init(3, 50, false); // initialize pin
 
-    opto_trig.init(4, 10, false); // initialize pin
+    opto_trig.init(4, 50, false); // initialize pin
   
     // Pump trigger setup
     pump_trig.init(5, 500, true); // initialize pin, invert pin

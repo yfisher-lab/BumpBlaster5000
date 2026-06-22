@@ -40,12 +40,12 @@ class WidgetWindow:
         self._heading_pin_label = QtWidgets.QLabel()
         self._heading_pin_label.setText("Set heading pin value:")
         self.heading_pin_input = QtWidgets.QLineEdit()
-        self.heading_pin_send_button = QtWidgets.QPushButton("Send heading value [0-4096)")
+        self.heading_pin_send_button = QtWidgets.QPushButton("Send heading value [0-1024)")
 
         self._index_pin_label = QtWidgets.QLabel()
         self._index_pin_label.setText("Set index/y pin value:")
         self.index_pin_input = QtWidgets.QLineEdit()
-        self.index_pin_send_button = QtWidgets.QPushButton("Send index/y value [0-4096)")
+        self.index_pin_send_button = QtWidgets.QPushButton("Send index/y value [0-1024)")
 
         
         # plot views

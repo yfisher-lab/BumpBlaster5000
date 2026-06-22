@@ -7,24 +7,24 @@ def build_cmd_str(queue):
 
     queue.put('0,4\n'.encode('UTF-8'))
 
-    max_dac_val = 4096
+    max_dac_val = 1024
     
 
 
-    unpaired_heading = int(max_dac_val/3 - 4096/24)
-    paired_heading = int(max_dac_val/3*2 - 4096/24)
+    unpaired_heading = int(max_dac_val/3 - max_dac_val/24)
+    paired_heading = int(max_dac_val/3*2 - max_dac_val/24)
     
     
     # # flash each bar for 2 seconds 5 times interleaved with 5 seconds between
     for _ in range(5):
         cmd = [int(5*6), 10]
         # heading, index, opto_bool, opto_delay, combined_dur
-        cmd.extend([paired_heading, 4095, 0, 0, 4900])
+        cmd.extend([paired_heading, max_dac_val-1, 0, 0, 4900])
         cmd.extend([paired_heading, 0, 0, 0, 2000])
-        cmd.extend([paired_heading, 4095, 0, 0, 100])
-        cmd.extend([unpaired_heading, 4095, 0, 0, 4900])
+        cmd.extend([paired_heading, max_dac_val-1, 0, 0, 100])
+        cmd.extend([unpaired_heading, max_dac_val-1, 0, 0, 4900])
         cmd.extend([unpaired_heading, 0, 0, 0, 2000])
-        cmd.extend([unpaired_heading, 4095, 0, 0, 100])
+        cmd.extend([unpaired_heading, max_dac_val-1, 0, 0, 100])
         queue.put(cmd_to_str(cmd).encode('UTF-8'))
         sleep(14.1)
 
@@ -32,12 +32,12 @@ def build_cmd_str(queue):
     for _ in range(3):
         cmd = [int(5*6), 10]
         # pair 1 bar with opto stim, while the other one just flashes
-        cmd.extend([paired_heading, 4095, 0, 0, 4900])
+        cmd.extend([paired_heading, max_dac_val-1, 0, 0, 4900])
         cmd.extend([paired_heading, 0, 1, 0, 2000])
-        cmd.extend([paired_heading, 4095, 0, 0, 100])
-        cmd.extend([unpaired_heading, 4095, 0, 0, 4900])
+        cmd.extend([paired_heading, max_dac_val-1, 0, 0, 100])
+        cmd.extend([unpaired_heading, max_dac_val-1, 0, 0, 4900])
         cmd.extend([unpaired_heading, 0, 0, 0, 2000])
-        cmd.extend([unpaired_heading, 4095, 0, 0, 100])
+        cmd.extend([unpaired_heading, max_dac_val-1, 0, 0, 100])
         queue.put(cmd_to_str(cmd).encode('UTF-8'))
         sleep(14.1)
     
@@ -45,19 +45,19 @@ def build_cmd_str(queue):
     for _ in range(5):
         cmd = [int(5*6), 10]
         # heading, index, opto_bool, opto_delay, combined_dur
-        cmd.extend([paired_heading, 4095, 0, 0, 4900])
+        cmd.extend([paired_heading, max_dac_val-1, 0, 0, 4900])
         cmd.extend([paired_heading, 0, 0, 0, 2000])
-        cmd.extend([paired_heading, 4095, 0, 0, 100])
-        cmd.extend([unpaired_heading, 4095, 0, 0, 4900])
+        cmd.extend([paired_heading, max_dac_val-1, 0, 0, 100])
+        cmd.extend([unpaired_heading, max_dac_val-1, 0, 0, 4900])
         cmd.extend([unpaired_heading, 0, 0, 0, 2000])
-        cmd.extend([unpaired_heading, 4095, 0, 0, 100])
+        cmd.extend([unpaired_heading, max_dac_val-1, 0, 0, 100])
         queue.put(cmd_to_str(cmd).encode('UTF-8'))
         sleep(14.1)
 
 
   
     queue.put('0,5\n'.encode('UTF-8'))
-    queue.put('1,7,4095\n'.encode('UTF-8'))
+    queue.put('1,7,1023\n'.encode('UTF-8'))
 
     
     return 
