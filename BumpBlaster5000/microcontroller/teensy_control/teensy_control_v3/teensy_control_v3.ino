@@ -33,7 +33,7 @@ void setup() {
     opto_trig.init(4, 50, false); // initialize pin
   
     // Pump trigger setup
-    pump_trig.init(5, 500, true); // initialize pin, invert pin
+    pump_trig.init(5, 500, false); // initialize pin, invert pin
   
 
     ft.init(2, 10, SPI); // initialize dacs: frame pin 2, LTC1661 CS on pin 10, SPI (MOSI=11, SCK=13)
