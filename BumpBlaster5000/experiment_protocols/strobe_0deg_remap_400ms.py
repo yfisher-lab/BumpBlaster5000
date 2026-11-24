@@ -27,6 +27,16 @@ def build_cmd_str(queue):
             cmd.extend([h, 1, 0, 0, 800])
             cmd.extend([h, 0, 0, 0, 400])
             cmd.extend([h, 1, 0, 0, 800])
+
+        cmd_str = ""
+        for item in cmd:
+            cmd_str = cmd_str + f"{item},"
+        cmd_str = cmd_str[:-1] + "\n"
+    
+        queue.put(cmd_str.encode('UTF-8'))
+    
+        sleep(2*n_spots*n_rep + 10)
+
     cmd.extend([0,  max_dac_val-1,   0,  0, 5000])
 
     cmd_str = ""
@@ -36,7 +46,7 @@ def build_cmd_str(queue):
 
     queue.put(cmd_str.encode('UTF-8'))
 
-    sleep(2*n_spots*n_rep + 30)
+    sleep(2*n_spots*n_rep + 10)
     queue.put('0,5\n'.encode('UTF-8'))
     queue.put('1,7,0\n'.encode('UTF-8'))
 
