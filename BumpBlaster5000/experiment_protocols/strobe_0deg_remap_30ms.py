@@ -19,7 +19,7 @@ def build_cmd_str(queue):
         queue.put(cmd_to_str(cmd).encode('UTF-8'))
         sleep(duration)
 
-    def strobe_points(h, n_strobes, strobe_ms=30, off_ms=90):
+    def strobe_points(h, n_strobes, strobe_ms=30, off_ms=60):
         # Each strobe is a low point followed by a high point, all the same duration.
         # Only the very first point carries the 1 at index 2.
         points = []
