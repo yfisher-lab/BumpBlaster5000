@@ -10,4 +10,5 @@ from . import remap_0deg_visgap_100ms, remap_0deg_visgap_500ms, remap_180deg_vis
 from . import across_circ_0deg_bothgap_500ms, across_circ_180deg_bothgap_500ms
 from . import remap_0deg_post_dark, remap_180deg_post_dark
 from . import flash_bar_2loc_loc1stim_on5s_off10s_5x, flash_bar_2loc_loc2stim_on5s_off10s_5x, flashbar_2loc_nostim_on5s_off10s_10x
-from. import fixed_180deg_remap_2400ms, fixed_0deg_remap_2400ms
+from . import fixed_180deg_remap_2400ms, fixed_0deg_remap_2400ms
+from . import strobe_180deg_remap_400ms, strobe_0deg_remap_400ms
