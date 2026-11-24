@@ -34,7 +34,7 @@ def build_cmd_str(queue):
 
     queue.put(cmd_str.encode('UTF-8'))
 
-    sleep(2*n_spots*n_rep + 10)
+    sleep(2*n_spots*n_rep + 30)
     queue.put('0,5\n'.encode('UTF-8'))
     queue.put('1,7,0\n'.encode('UTF-8'))
 
